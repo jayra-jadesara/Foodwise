@@ -4,41 +4,24 @@
 
 import { Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { getSupabaseServerClient } from "@/shared/lib/supabase/server";
 import { ScannerView } from "@/features/scanner/components/ScannerView";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Scan Product — FoodWise",
-  description: "Scan a barcode to get instant health analysis",
+  title: "Scan — FoodWise",
+  description: "Scan a barcode or ingredient label for instant health analysis",
 };
 
 export default async function ScanPage() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (toSet) => {
-          toSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const supabase = await getSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <Box
       sx={{
-        height: "calc(100dvh - 56px)", // subtract bottom nav height
+        // Full remaining height after bottom nav (56px)
+        height: "calc(100dvh - 56px)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -46,7 +29,14 @@ export default async function ScanPage() {
     >
       <Suspense
         fallback={
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+            }}
+          >
             <CircularProgress />
           </Box>
         }

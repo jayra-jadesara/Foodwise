@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Box, Button, TextField, Typography, Paper, Alert, Stack, Link } from '@mui/material';
-import { createClient } from '@/shared/lib/supabase/client';
+import { getSupabaseBrowserClient } from '@/shared/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
 
@@ -13,7 +13,7 @@ export function SignupForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   
-  const supabase = createClient();
+  const supabase = getSupabaseBrowserClient();
   const router = useRouter();
 
   const handleSignup = async (e: React.FormEvent) => {

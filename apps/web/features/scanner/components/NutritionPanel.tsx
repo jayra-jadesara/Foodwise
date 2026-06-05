@@ -133,7 +133,7 @@ export function NutritionPanel({ product }: Props) {
           <NutrientRow label="Carbohydrates" value={n.carbohydrates_100g} unit="g" />
           <NutrientRow label="of which sugars" value={n.sugars_100g} unit="g" highlight={n.sugars_100g !== undefined && n.sugars_100g > 15 ? "warn" : "neutral"} />
           <NutrientRow label="Fibre" value={n.fiber_100g} unit="g" highlight={n.fiber_100g !== undefined && n.fiber_100g > 3 ? "good" : "neutral"} />
-          <NutrientRow label="Protein" value={n.nutriments?.proteins_100g ?? n.proteins_100g} unit="g" highlight={n.proteins_100g !== undefined && n.proteins_100g > 10 ? "good" : "neutral"} />
+          <NutrientRow label="Protein" value={n.proteins_100g} unit="g" highlight={n.proteins_100g !== undefined && n.proteins_100g > 10 ? "good" : "neutral"} />
           <NutrientRow label="Salt" value={n.salt_100g} unit="g" highlight={n.salt_100g !== undefined && n.salt_100g > 1.5 ? "warn" : "neutral"} />
         </Box>
       </Paper>

@@ -1,6 +1,5 @@
 // ─────────────────────────────────────────────
-// FoodWise · Scanner Module · OFF Adapter
-// Maps OpenFoodFacts response → Product entity
+// FoodWise · Scanner Module · OFF Adapter (FIXED)
 // ─────────────────────────────────────────────
 
 import type { Product, Nutriments } from "../types";
@@ -8,7 +7,6 @@ import { OFFProductSchema } from "../schemas";
 
 const OFF_API_BASE = "https://world.openfoodfacts.org/api/v2";
 
-// ─── Fetch from OpenFoodFacts ──────────────────
 export async function fetchFromOFF(barcode: string): Promise<Product | null> {
   const url = `${OFF_API_BASE}/product/${barcode}?fields=code,product_name,product_name_en,brands,image_front_url,categories_tags,labels_tags,allergens_tags,ingredients_text,nutriments,nova_group,nutriscore_grade,countries_tags`;
 
@@ -28,14 +26,15 @@ export async function fetchFromOFF(barcode: string): Promise<Product | null> {
     return null;
   }
 
-  return mapOFFToProduct(barcode, parsed.data.product);
+  // We cast as any here because we are intentionally omitting 'id' 
+  // so the database can generate it automatically.
+  return mapOFFToProduct(barcode, parsed.data.product) as any;
 }
 
-// ─── Map OFF product fields → Product ──────────
 function mapOFFToProduct(
   barcode: string,
   p: NonNullable<ReturnType<typeof OFFProductSchema.parse>["product"]>
-): Product {
+) {
   const nutriments: Nutriments = {
     energy_kcal_100g: p.nutriments?.["energy-kcal_100g"],
     fat_100g: p.nutriments?.fat_100g,
@@ -57,15 +56,15 @@ function mapOFFToProduct(
   const nutriscoreRaw = p.nutriscore_grade?.toLowerCase();
   const nutriscoreValid =
     nutriscoreRaw === "a" ||
-    nutriscoreRaw === "b" ||
-    nutriscoreRaw === "c" ||
-    nutriscoreRaw === "d" ||
-    nutriscoreRaw === "e"
+      nutriscoreRaw === "b" ||
+      nutriscoreRaw === "c" ||
+      nutriscoreRaw === "d" ||
+      nutriscoreRaw === "e"
       ? (nutriscoreRaw as "a" | "b" | "c" | "d" | "e")
       : undefined;
 
   return {
-    id: "", // will be assigned by Supabase on upsert
+    // ✅ REMOVED: id: "", 
     barcode,
     name: p.product_name_en || p.product_name || "Unknown product",
     brand: p.brands?.split(",")[0]?.trim(),

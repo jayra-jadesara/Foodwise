@@ -1,153 +1,107 @@
 // ─────────────────────────────────────────────
-// FoodWise · Scanner Module · Camera Hook
-// Wraps ZXing barcode detection with React lifecycle
+// FoodWise · Scanner Module · React Query Hooks
 // ─────────────────────────────────────────────
 
-"use client";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
+import type {
+  BarcodeLookupApiResponse,
+  ScanResult,
+  ScanHistoryItem,
+} from "../types";
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import type { BarcodeResult } from "../types";
+// ── Query key factory ──────────────────────────
+export const scannerKeys = {
+  all: ["scanner"] as const,
+  product: (barcode: string) => ["scanner", "product", barcode] as const,
+  history: (userId: string) => ["scanner", "history", userId] as const,
+};
 
-type CameraStatus =
-  | "idle"
-  | "requesting"
-  | "active"
-  | "denied"
-  | "unsupported"
-  | "error";
+// ── Barcode lookup function ────────────────────
+async function lookupBarcode(barcode: string): Promise<ScanResult> {
+  const res = await fetch("/api/scan/barcode", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ barcode }),
+  });
 
-interface UseCameraOptions {
-  onDetected: (result: BarcodeResult) => void;
-  enabled?: boolean;
-  /** Debounce — ignore re-scans of the same barcode within this ms window */
-  dedupMs?: number;
+  const data: BarcodeLookupApiResponse = await res.json();
+
+  if (!data.success) {
+    throw Object.assign(new Error(data.error), { code: data.code });
+  }
+
+  return data.data;
 }
 
-interface UseCameraReturn {
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  status: CameraStatus;
-  error: string | null;
-  startCamera: () => Promise<void>;
-  stopCamera: () => void;
+// ── Mutation: scan a barcode ───────────────────
+export function useBarcodeScan(
+  options?: UseMutationOptions<ScanResult, Error, string>
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation<ScanResult, Error, string>({
+    mutationFn: lookupBarcode,
+    onSuccess: (data, barcode) => {
+      // Cache the product so subsequent lookups are instant
+      queryClient.setQueryData(scannerKeys.product(barcode), data);
+    },
+    ...options,
+  });
 }
 
-export function useCamera({
-  onDetected,
-  enabled = true,
-  dedupMs = 2500,
-}: UseCameraOptions): UseCameraReturn {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const readerRef = useRef<InstanceType<typeof import("@zxing/browser").BrowserMultiFormatReader> | null>(null);
-  const lastScannedRef = useRef<{ value: string; ts: number } | null>(null);
-  const [status, setStatus] = useState<CameraStatus>("idle");
-  const [error, setError] = useState<string | null>(null);
+// ── Query: get cached product by barcode ──────
+export function useProduct(barcode: string | null) {
+  return useQuery<ScanResult>({
+    queryKey: scannerKeys.product(barcode ?? ""),
+    queryFn: () => lookupBarcode(barcode!),
+    enabled: !!barcode && /^\d{8,14}$/.test(barcode),
+    staleTime: 1000 * 60 * 60 * 24, // 24h — product data doesn't change often
+    gcTime: 1000 * 60 * 60 * 48,
+    retry: (failureCount, error) => {
+      const code = (error as Error & { code?: string }).code;
+      // Don't retry if the product simply doesn't exist
+      if (code === "NOT_FOUND" || code === "INVALID_BARCODE") return false;
+      return failureCount < 2;
+    },
+  });
+}
 
-  const stopCamera = useCallback(() => {
-    readerRef.current?.reset();
-    readerRef.current = null;
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    setStatus("idle");
-  }, []);
+// ── Query: scan history for current user ──────
+async function fetchScanHistory(userId: string): Promise<ScanHistoryItem[]> {
+  const res = await fetch(`/api/scan/history?user_id=${userId}&limit=50`);
+  if (!res.ok) throw new Error("Failed to load history");
+  return res.json();
+}
 
-  const startCamera = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setStatus("unsupported");
-      setError("Camera not supported on this device.");
-      return;
-    }
+export function useScanHistory(userId: string | undefined) {
+  return useQuery<ScanHistoryItem[]>({
+    queryKey: scannerKeys.history(userId ?? ""),
+    queryFn: () => fetchScanHistory(userId!),
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 5,
+  });
+}
 
-    setStatus("requesting");
-    setError(null);
+// ── Mutation: clear scan history ──────────────
+export function useClearHistory(userId: string) {
+  const queryClient = useQueryClient();
 
-    try {
-      // ── Request rear camera ─────────────────
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/scan/history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId }),
       });
-
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-
-      setStatus("active");
-
-      // ── Lazy-load ZXing ─────────────────────
-      const { BrowserMultiFormatReader, NotFoundException } = await import("@zxing/browser");
-      const reader = new BrowserMultiFormatReader();
-      readerRef.current = reader;
-
-      // ── Decode loop ─────────────────────────
-      const decodeLoop = () => {
-        if (!videoRef.current || !readerRef.current) return;
-
-        try {
-          const result = reader.decodeFromVideoElement(videoRef.current);
-          // decodeFromVideoElement is synchronous in ZXing
-          const value = result.getText();
-          const format = result.getBarcodeFormat().toString();
-          const now = Date.now();
-
-          const last = lastScannedRef.current;
-          const isDuplicate =
-            last && last.value === value && now - last.ts < dedupMs;
-
-          if (!isDuplicate) {
-            lastScannedRef.current = { value, ts: now };
-            onDetected({ rawValue: value, format, timestamp: now });
-          }
-        } catch (e) {
-          // NotFoundException is expected when no barcode in frame
-          if (!(e instanceof NotFoundException)) {
-            console.warn("[useCamera] decode error", e);
-          }
-        }
-
-        if (streamRef.current) {
-          requestAnimationFrame(decodeLoop);
-        }
-      };
-
-      requestAnimationFrame(decodeLoop);
-    } catch (err) {
-      if (
-        err instanceof DOMException &&
-        (err.name === "NotAllowedError" || err.name === "PermissionDeniedError")
-      ) {
-        setStatus("denied");
-        setError("Camera permission denied. Please allow camera access.");
-      } else {
-        setStatus("error");
-        setError("Could not start camera. Try again or use manual entry.");
-        console.error("[useCamera] start error", err);
-      }
-    }
-  }, [onDetected, dedupMs]);
-
-  
-  // ── Auto-start when enabled changes ──────────
-  useEffect(() => {
-    if (enabled) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => stopCamera();
-  }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return { videoRef, status, error, startCamera, stopCamera };
+      if (!res.ok) throw new Error("Failed to clear history");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scannerKeys.history(userId) });
+    },
+  });
 }

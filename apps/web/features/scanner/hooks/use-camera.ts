@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
 // FoodWise · Scanner Module · Camera Hook
-// Wraps ZXing barcode detection with React lifecycle
+// Uses @zxing/browser decodeFromVideoDevice API
+// correctly — async callback pattern, no .reset()
 // ─────────────────────────────────────────────
 
 "use client";
@@ -19,7 +20,6 @@ type CameraStatus =
 interface UseCameraOptions {
   onDetected: (result: BarcodeResult) => void;
   enabled?: boolean;
-  /** Debounce — ignore re-scans of the same barcode within this ms window */
   dedupMs?: number;
 }
 
@@ -37,27 +37,35 @@ export function useCamera({
   dedupMs = 2500,
 }: UseCameraOptions): UseCameraReturn {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const readerRef = useRef<InstanceType<typeof import("@zxing/browser").BrowserMultiFormatReader> | null>(null);
+  const readerRef = useRef<import("@zxing/browser").BrowserMultiFormatReader | null>(null);
   const lastScannedRef = useRef<{ value: string; ts: number } | null>(null);
+  const activeRef = useRef(false); // guard against stale callbacks
   const [status, setStatus] = useState<CameraStatus>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const stopCamera = useCallback(() => {
-    readerRef.current?.reset();
-    readerRef.current = null;
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
+    activeRef.current = false;
+
+    // stopAsyncDecode() is the correct method on BrowserMultiFormatReader
+    if (readerRef.current) {
+      try { readerRef.current.stopAsyncDecode(); } catch { /* ignore */ }
+      readerRef.current = null;
     }
-    if (videoRef.current) {
+
+    // Also stop any raw media tracks attached to the video element
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((t) => t.stop());
       videoRef.current.srcObject = null;
     }
+
     setStatus("idle");
   }, []);
 
   const startCamera = useCallback(async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
+    if (activeRef.current) return; // already running
+
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setStatus("unsupported");
       setError("Camera not supported on this device.");
       return;
@@ -65,80 +73,81 @@ export function useCamera({
 
     setStatus("requesting");
     setError(null);
+    activeRef.current = true;
 
     try {
-      // ── Request rear camera ─────────────────
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
+      // ── Lazy-load ZXing (browser-only bundle) ──
+      const { BrowserMultiFormatReader } = await import("@zxing/browser");
 
-      streamRef.current = stream;
+      const reader = new BrowserMultiFormatReader();
+      readerRef.current = reader;
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+      // ── Get rear-camera device ID ──────────────
+      const devices = await BrowserMultiFormatReader.listVideoInputDevices();
+      const rearDevice =
+        devices.find((d) =>
+          /back|rear|environment/i.test(d.label)
+        ) ?? devices[0];
+
+      const deviceId = rearDevice?.deviceId ?? undefined;
+
+      if (!videoRef.current) {
+        setStatus("error");
+        setError("Video element not ready.");
+        return;
       }
 
       setStatus("active");
 
-      // ── Lazy-load ZXing ─────────────────────
-      const { BrowserMultiFormatReader, NotFoundException } = await import("@zxing/browser");
-      const reader = new BrowserMultiFormatReader();
-      readerRef.current = reader;
+      // ── decodeFromVideoDevice: async, callback-based ──
+      // This is the CORRECT public API. decodeFromVideoElement(el) alone
+      // throws "callbackFn is required". We must pass a callback as 3rd arg.
+      await reader.decodeFromVideoDevice(
+        deviceId ?? null,
+        videoRef.current,
+        (result, err) => {
+          if (!activeRef.current) return; // stop propagating after unmount
 
-      // ── Decode loop ─────────────────────────
-      const decodeLoop = () => {
-        if (!videoRef.current || !readerRef.current) return;
+          if (result) {
+            const value = result.getText();
+            const format = result.getBarcodeFormat();
+            const now = Date.now();
 
-        try {
-          const result = reader.decodeFromVideoElement(videoRef.current);
-          // decodeFromVideoElement is synchronous in ZXing
-          const value = result.getText();
-          const format = result.getBarcodeFormat().toString();
-          const now = Date.now();
+            const last = lastScannedRef.current;
+            const isDuplicate =
+              last && last.value === value && now - last.ts < dedupMs;
 
-          const last = lastScannedRef.current;
-          const isDuplicate =
-            last && last.value === value && now - last.ts < dedupMs;
-
-          if (!isDuplicate) {
-            lastScannedRef.current = { value, ts: now };
-            onDetected({ rawValue: value, format, timestamp: now });
+            if (!isDuplicate) {
+              lastScannedRef.current = { value, ts: now };
+              onDetected({ rawValue: value, format: String(format), timestamp: now });
+            }
           }
-        } catch (e) {
-          // NotFoundException is expected when no barcode in frame
-          if (!(e instanceof NotFoundException)) {
-            console.warn("[useCamera] decode error", e);
+
+          // err is a NotFoundException when no barcode is in frame — totally normal.
+          // Only log unexpected errors.
+          if (err && !(err.name === "NotFoundException")) {
+            console.warn("[useCamera] decode error:", err.name, err.message);
           }
         }
-
-        if (streamRef.current) {
-          requestAnimationFrame(decodeLoop);
-        }
-      };
-
-      requestAnimationFrame(decodeLoop);
+      );
     } catch (err) {
-      if (
+      if (!activeRef.current) return; // unmounted while starting
+
+      const isPermission =
         err instanceof DOMException &&
-        (err.name === "NotAllowedError" || err.name === "PermissionDeniedError")
-      ) {
+        (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
+
+      if (isPermission) {
         setStatus("denied");
         setError("Camera permission denied. Please allow camera access.");
       } else {
         setStatus("error");
-        setError("Could not start camera. Try again or use manual entry.");
-        console.error("[useCamera] start error", err);
+        setError("Could not start camera. Try manual entry instead.");
+        console.error("[useCamera] start error:", err);
       }
     }
   }, [onDetected, dedupMs]);
 
-  // ── Auto-start when enabled changes ──────────
   useEffect(() => {
     if (enabled) {
       startCamera();
@@ -146,7 +155,8 @@ export function useCamera({
       stopCamera();
     }
     return () => stopCamera();
-  }, [enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
   return { videoRef, status, error, startCamera, stopCamera };
 }

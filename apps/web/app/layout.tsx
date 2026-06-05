@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <meta name="viewport" content="initial-scale=1, width=device-width" />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         {/* 
             The Providers component handles MUI, Theme, and React Query 
             safely on the client side. 

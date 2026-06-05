@@ -1,100 +1,69 @@
-'use client';
+// ─────────────────────────────────────────────
+// FoodWise · Dashboard Page (Server Component)
+// Fetches live data — no static content
+// ─────────────────────────────────────────────
 
-import React from 'react';
-import {
-    Container,
-    Typography,
-    Grid2 as Grid,
-    Paper,
-    Box,
-    Button,
-    Stack,
-    Avatar
-} from '@mui/material';
-import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
-import HistoryIcon from '@mui/icons-material/History';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import Link from 'next/link';
+import { Suspense } from "react";
+import { Box, CircularProgress } from "@mui/material";
+import { getSupabaseServerClient } from "@/shared/lib/supabase/server";
+import { DashboardView } from "@/features/dashboard/components/DashboardView";
+import type { Metadata } from "next";
 
-export default function DashboardPage() {
-    return (
-        <Container maxWidth="md" sx={{ py: 4 }}>
-            {/* Header Section */}
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 4 }}>
-                <Box>
-                    <Typography variant="h4" fontWeight={800} gutterBottom>
-                        Hello, HealthWise! 👋
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary">
-                        Ready to check your groceries today?
-                    </Typography>
-                </Box>
-                <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>U</Avatar>
-            </Stack>
+export const metadata: Metadata = { title: "Dashboard — FoodWise" };
 
-            <Grid container spacing={3}>
-                {/* Quick Action: Scan */}
-                <Grid size={{ xs: 12 }}>
-                    <Paper
-                        sx={{
-                            p: 3,
-                            bgcolor: 'primary.main',
-                            color: 'white',
-                            borderRadius: 4,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between'
-                        }}
-                    >
-                        <Box>
-                            <Typography variant="h6" fontWeight={700}>New Scan</Typography>
-                            <Typography variant="body2" sx={{ opacity: 0.9, mb: 2 }}>
-                                Analyze ingredients and health scores instantly.
-                            </Typography>
-                            <Button
-                                component={Link}
-                                href="/scan"
-                                variant="contained"
-                                color="inherit"
-                                startIcon={<QrCodeScannerIcon />}
-                                sx={{ color: 'primary.main', fontWeight: 700, bgcolor: 'white', '&:hover': { bgcolor: '#f0f0f0' } }}
-                            >
-                                Open Camera
-                            </Button>
-                        </Box>
-                        <QrCodeScannerIcon sx={{ fontSize: 80, opacity: 0.2 }} />
-                    </Paper>
-                </Grid>
+export default async function DashboardPage() {
+  const supabase = await getSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-                {/* Stats Cards */}
-                <Grid size={{ xs: 6 }}>
-                    <Paper sx={{ p: 2, borderRadius: 3, textAlign: 'center' }}>
-                        <HistoryIcon color="primary" sx={{ mb: 1 }} />
-                        <Typography variant="h5" fontWeight={700}>12</Typography>
-                        <Typography variant="caption" color="text.secondary">Scans this week</Typography>
-                    </Paper>
-                </Grid>
+  const userId = user?.id ?? "";
 
-                <Grid size={{ xs: 6 }}>
-                    <Paper sx={{ p: 2, borderRadius: 3, textAlign: 'center' }}>
-                        <TrendingUpIcon color="secondary" sx={{ mb: 1 }} />
-                        <Typography variant="h5" fontWeight={700}>82</Typography>
-                        <Typography variant="caption" color="text.secondary">Avg. Health Score</Typography>
-                    </Paper>
-                </Grid>
+  // Recent scans — server-side for instant render
+  const { data: recentScans } = await supabase
+    .from("scan_history")
+    .select("id, barcode, product_name, product_image, health_score_total, health_score_grade, scanned_at")
+    .eq("user_id", userId)
+    .order("scanned_at", { ascending: false })
+    .limit(5);
 
-                {/* Placeholder for Recent Activity */}
-                <Grid size={{ xs: 12 }}>
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2 }}>
-                        Recent Activity
-                    </Typography>
-                    <Paper sx={{ p: 4, borderRadius: 3, textAlign: 'center', border: '1px dashed', borderColor: 'divider', bgcolor: 'transparent' }}>
-                        <Typography variant="body2" color="text.secondary">
-                            Your scan history will appear here.
-                        </Typography>
-                    </Paper>
-                </Grid>
-            </Grid>
-        </Container>
-    );
+  // Weekly count
+  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { count: weeklyCount } = await supabase
+    .from("scan_history")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("scanned_at", weekStart);
+
+  // Avg score from last 20
+  const { data: scoreRows } = await supabase
+    .from("scan_history")
+    .select("health_score_total")
+    .eq("user_id", userId)
+    .not("health_score_total", "is", null)
+    .order("scanned_at", { ascending: false })
+    .limit(20);
+
+  const avgScore =
+    scoreRows && scoreRows.length > 0
+      ? Math.round(
+          scoreRows.reduce((s, r) => s + (r.health_score_total ?? 0), 0) /
+          scoreRows.length
+        )
+      : null;
+
+  return (
+    <Suspense
+      fallback={
+        <Box sx={{ display: "flex", justifyContent: "center", pt: 8 }}>
+          <CircularProgress />
+        </Box>
+      }
+    >
+      <DashboardView
+        user={user}
+        recentScans={recentScans ?? []}
+        weeklyCount={weeklyCount ?? 0}
+        avgScore={avgScore}
+      />
+    </Suspense>
+  );
 }

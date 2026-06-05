@@ -1,32 +1,42 @@
 // ─────────────────────────────────────────────
 // FoodWise · Scanner · ScanHistoryList
-// Recent scans with scores and re-scan action
+// Recent scans — hydration-safe relative timestamps
 // ─────────────────────────────────────────────
 
 "use client";
 
 import {
-  List,
-  ListItemButton,
-  ListItemAvatar,
-  ListItemText,
-  Avatar,
-  Typography,
-  Box,
-  Skeleton,
-  Chip,
-  Divider,
+  List, ListItemButton, ListItemAvatar, ListItemText,
+  Avatar, Typography, Box, Skeleton, Chip, Divider,
 } from "@mui/material";
+import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import type { ScanHistoryItem } from "../types";
 
 const GRADE_COLOR: Record<string, string> = {
-  A: "#22c55e",
-  B: "#84cc16",
-  C: "#eab308",
-  D: "#f97316",
-  F: "#ef4444",
+  A: "#22c55e", B: "#84cc16", C: "#eab308", D: "#f97316", F: "#ef4444",
 };
+
+// ── Hydration-safe relative time ──────────────
+// Renders nothing on server, fills in on client after mount.
+function RelativeTime({ dateStr }: { dateStr: string }) {
+  const [label, setLabel] = useState<string>("");
+
+  useEffect(() => {
+    setLabel(formatDistanceToNow(new Date(dateStr), { addSuffix: true }));
+    // Update every 60s so it stays fresh
+    const id = setInterval(() => {
+      setLabel(formatDistanceToNow(new Date(dateStr), { addSuffix: true }));
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [dateStr]);
+
+  return (
+    <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
+      {label}
+    </Typography>
+  );
+}
 
 interface Props {
   items: ScanHistoryItem[];
@@ -69,10 +79,7 @@ export function ScanHistoryList({ items, loading = false, onSelect }: Props) {
         const color = GRADE_COLOR[item.health_score_grade] ?? "#888";
         return (
           <Box key={item.id}>
-            <ListItemButton
-              onClick={() => onSelect(item.barcode)}
-              sx={{ px: 2, py: 1.25, gap: 1.5 }}
-            >
+            <ListItemButton onClick={() => onSelect(item.barcode)} sx={{ px: 2, py: 1.25, gap: 1.5 }}>
               <ListItemAvatar sx={{ minWidth: "auto" }}>
                 <Avatar
                   src={item.product_image}
@@ -86,50 +93,25 @@ export function ScanHistoryList({ items, loading = false, onSelect }: Props) {
 
               <ListItemText
                 primary={
-                  <Typography
-                    variant="body2"
-                    fontWeight={600}
-                    sx={{
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontSize: "0.85rem",
-                    }}
-                  >
+                  <Typography variant="body2" fontWeight={600}
+                    sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.85rem" }}>
                     {item.product_name}
                   </Typography>
                 }
-                secondary={
-                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
-                    {formatDistanceToNow(new Date(item.scanned_at), { addSuffix: true })}
-                  </Typography>
-                }
+                secondary={<RelativeTime dateStr={item.scanned_at} />}
                 sx={{ my: 0, overflow: "hidden" }}
               />
 
-              {/* Score pill */}
               <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.25, flexShrink: 0 }}>
-                <Typography
-                  sx={{
-                    fontSize: "1.1rem",
-                    fontWeight: 800,
-                    color,
-                    lineHeight: 1,
-                  }}
-                >
+                <Typography sx={{ fontSize: "1.1rem", fontWeight: 800, color, lineHeight: 1 }}>
                   {item.health_score_total}
                 </Typography>
                 <Chip
                   label={item.health_score_grade}
                   size="small"
                   sx={{
-                    bgcolor: `${color}22`,
-                    color,
-                    fontWeight: 700,
-                    fontSize: "0.6rem",
-                    height: 18,
-                    border: `1px solid ${color}55`,
-                    px: 0.5,
+                    bgcolor: `${color}22`, color, fontWeight: 700,
+                    fontSize: "0.6rem", height: 18, border: `1px solid ${color}55`, px: 0.5,
                   }}
                 />
               </Box>

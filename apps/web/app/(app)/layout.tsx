@@ -1,49 +1,77 @@
-'use client';
+// ─────────────────────────────────────────────
+// FoodWise · App Layout
+// app/(app)/layout.tsx
+// Bottom navigation + auth-gated shell
+// ─────────────────────────────────────────────
 
-import React from 'react';
-import { Box, BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
-import { useRouter, usePathname } from 'next/navigation';
-import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
-import DashboardIcon from '@mui/icons-material/Dashboard'; // Fixed import
-import HistoryIcon from '@mui/icons-material/History';
-import PersonIcon from '@mui/icons-material/Person';
+"use client";
+
+import { Box, BottomNavigation, BottomNavigationAction, Paper } from "@mui/material";
+import { useRouter, usePathname } from "next/navigation";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
+import ListAltIcon from "@mui/icons-material/ListAlt";
+import PersonIcon from "@mui/icons-material/Person";
+
+const NAV_ITEMS = [
+  { label: "Home",   value: "/dashboard", icon: <DashboardIcon /> },
+  { label: "Scan",   value: "/scan",      icon: <QrCodeScannerIcon /> },
+  { label: "Lists",  value: "/lists",     icon: <ListAltIcon /> },
+  { label: "Profile",value: "/profile",   icon: <PersonIcon /> },
+];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
+  // Determine active tab — match by prefix so /scan/* stays active
+  const activeValue =
+    NAV_ITEMS.find((item) => pathname.startsWith(item.value))?.value ?? "/dashboard";
+
   return (
-    <Box sx={{ pb: 7, minHeight: '100vh', bgcolor: 'background.default' }}>
-      {/* Main Content Area */}
+    <Box
+      sx={{
+        pb: "56px",         // height of bottom nav
+        minHeight: "100dvh",
+        bgcolor: "background.default",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       {children}
 
-      {/* Persistent Bottom Navigation */}
-      <Paper sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000 }} elevation={3}>
+      <Paper
+        sx={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 1200,
+          borderTop: "1px solid",
+          borderColor: "divider",
+        }}
+        elevation={0}
+      >
         <BottomNavigation
           showLabels
-          value={pathname}
-          onChange={(_, newValue) => router.push(newValue)}
+          value={activeValue}
+          onChange={(_, newValue: string) => router.push(newValue)}
+          sx={{ height: 56 }}
         >
-          <BottomNavigationAction
-            label="Home"
-            value="/dashboard"
-            icon={<DashboardIcon />}
-          />
-          <BottomNavigationAction
-            label="Scan"
-            value="/scan"
-            icon={<QrCodeScannerIcon />}
-          />
-          <BottomNavigationAction
-            label="History"
-            value="/scan" // Temporary until history page is built
-            icon={<HistoryIcon />}
-          />
-          <BottomNavigationAction
-            label="Profile"
-            value="/profile"
-            icon={<PersonIcon />}
-          />
+          {NAV_ITEMS.map(({ label, value, icon }) => (
+            <BottomNavigationAction
+              key={value}
+              label={label}
+              value={value}
+              icon={icon}
+              sx={{
+                "& .MuiBottomNavigationAction-label": {
+                  fontSize: "0.65rem",
+                  fontWeight: 600,
+                },
+              }}
+            />
+          ))}
         </BottomNavigation>
       </Paper>
     </Box>

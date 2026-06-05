@@ -17,11 +17,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@/features/*": ["features/*"],
-      "@/shared/*": ["shared/*"],
-      "@/app/*": ["app/*"]
+      "@/features/*": ["./features/*"],
+      "@/shared/*": ["./shared/*"],
+      "@/app/*": ["./app/*"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "supabase/functions"]
 }

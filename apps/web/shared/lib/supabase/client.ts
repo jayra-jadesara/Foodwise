@@ -1,7 +1,18 @@
-import { createBrowserClient } from '@supabase/ssr'
+// ─────────────────────────────────────────────
+// FoodWise · Shared · Supabase Browser Client
+// Singleton — safe to call in any Client Component
+// ─────────────────────────────────────────────
 
-export const createClient = () =>
-  createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+import { createBrowserClient } from "@supabase/ssr";
+
+let _client: ReturnType<typeof createBrowserClient> | null = null;
+
+export function getSupabaseBrowserClient() {
+  if (!_client) {
+    _client = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }
+  return _client;
+}
