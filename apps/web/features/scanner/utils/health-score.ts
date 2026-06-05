@@ -28,6 +28,26 @@ const MODERATE_RISK_ADDITIVES: RegExp[] = [
   /sodium caseinate/i,
 ];
 
+// New rules for the No-AI Engine
+export const SMART_RULES = {
+  KID_FRIENDLY: [/sugar/i, /syrup/i, /caffeine/i, /color/i, /e129/i],
+  NATURAL_HEROES: [/potato/i, /wheat/i, /milk/i, /fruit/i, /vegetable/i, /oats/i],
+  ULTRA_PROCESSED: [/maltodextrin/i, /hydrogenated/i, /emulsifier/i, /lecithin/i, /flavor/i]
+};
+
+export function getSmartInsights(text: string) {
+  const isHighSugar = text.toLowerCase().includes('sugar') || text.toLowerCase().includes('syrup');
+  const hasChemicals = SMART_RULES.ULTRA_PROCESSED.some(r => r.test(text));
+  const hasNatural = SMART_RULES.NATURAL_HEROES.some(r => r.test(text));
+
+  const badges = [];
+  if (!isHighSugar && hasNatural) badges.push({ label: "School Safe", color: "success" });
+  if (!hasChemicals) badges.push({ label: "Clean Label", color: "info" });
+  if (hasChemicals) badges.push({ label: "Ultra Processed", color: "warning" });
+
+  return badges;
+}
+
 // ─── Nutrition scoring (max 40 pts) ───────────────────────────
 function scoreNutrition(product: Product): number {
   const n = product.nutriments;

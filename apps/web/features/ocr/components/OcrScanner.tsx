@@ -21,6 +21,7 @@ import {
   Collapse,
   Tooltip,
   LinearProgress,
+  Grid,
 } from "@mui/material";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import ReplayIcon from "@mui/icons-material/Replay";
@@ -35,25 +36,26 @@ import { useOcrCamera } from "../hooks/use-ocr-camera";
 import { useOcrAnalyze } from "../queries/use-ocr";
 import { processDataUrl } from "../utils/image-preprocessor";
 import type { OcrAnalysisResult, IngredientAnnotation, RiskLevel } from "../types";
+import { getSmartInsights } from "@/features/scanner/utils/health-score";
 
 // ── Risk styling map ───────────────────────────
 const RISK_CONFIG: Record<
   RiskLevel,
   { color: string; bg: string; border: string; label: string }
 > = {
-  high:     { color: "#ef4444", bg: "#fef2f2", border: "#fca5a5", label: "High Risk" },
+  high: { color: "#ef4444", bg: "#fef2f2", border: "#fca5a5", label: "High Risk" },
   moderate: { color: "#f97316", bg: "#fff7ed", border: "#fdba74", label: "Moderate" },
-  low:      { color: "#eab308", bg: "#fefce8", border: "#fde047", label: "Low Risk" },
-  safe:     { color: "#22c55e", bg: "#f0fdf4", border: "#86efac", label: "Safe" },
-  unknown:  { color: "#94a3b8", bg: "#f8fafc", border: "#cbd5e1", label: "Unknown" },
+  low: { color: "#eab308", bg: "#fefce8", border: "#fde047", label: "Low Risk" },
+  safe: { color: "#22c55e", bg: "#f0fdf4", border: "#86efac", label: "Safe" },
+  unknown: { color: "#94a3b8", bg: "#f8fafc", border: "#cbd5e1", label: "Unknown" },
 };
 
 const OVERALL_RISK_ICON: Record<RiskLevel, React.ReactNode> = {
-  high:     <WarningAmberIcon sx={{ color: "#ef4444" }} />,
+  high: <WarningAmberIcon sx={{ color: "#ef4444" }} />,
   moderate: <WarningAmberIcon sx={{ color: "#f97316" }} />,
-  low:      <InfoOutlinedIcon sx={{ color: "#eab308" }} />,
-  safe:     <CheckCircleOutlineIcon sx={{ color: "#22c55e" }} />,
-  unknown:  <InfoOutlinedIcon sx={{ color: "#94a3b8" }} />,
+  low: <InfoOutlinedIcon sx={{ color: "#eab308" }} />,
+  safe: <CheckCircleOutlineIcon sx={{ color: "#22c55e" }} />,
+  unknown: <InfoOutlinedIcon sx={{ color: "#94a3b8" }} />,
 };
 
 // ── Sub-components ─────────────────────────────
@@ -182,6 +184,25 @@ function IngredientCard({ item }: { item: IngredientAnnotation }) {
         </Box>
       </Collapse>
     </Paper>
+  );
+}
+
+function SmartInsights({ text }: { text: string }) {
+  const insights = getSmartInsights(text);
+
+  return (
+    <Stack direction="row" spacing={1} sx={{ mt: 1, mb: 2 }}>
+      {insights.map((badge, i) => (
+        <Chip
+          key={i}
+          label={badge.label}
+          color={badge.color as any}
+          size="small"
+          variant="filled"
+          sx={{ fontWeight: 700, borderRadius: 1 }}
+        />
+      ))}
+    </Stack>
   );
 }
 
@@ -415,7 +436,7 @@ export function OcrScanner({ userId }: { userId?: string }) {
                   Ingredient Scanner
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.75, maxWidth: 280 }}>
-                  Point your camera at a product&apos;s ingredient list to get an AI-powered health analysis.
+                  Point your camera at a product&apos;s ingredient list to get health analysis.
                 </Typography>
                 <Button
                   variant="contained"
@@ -486,7 +507,7 @@ export function OcrScanner({ userId }: { userId?: string }) {
                   borderStyle: "solid",
                 },
                 "&::before": { top: -2, left: -2, borderWidth: "3px 0 0 3px", borderRadius: "4px 0 0 0" },
-                "&::after":  { bottom: -2, right: -2, borderWidth: "0 3px 3px 0", borderRadius: "0 0 4px 0" },
+                "&::after": { bottom: -2, right: -2, borderWidth: "0 3px 3px 0", borderRadius: "0 0 4px 0" },
               }}
             />
             <Typography
@@ -577,6 +598,7 @@ export function OcrScanner({ userId }: { userId?: string }) {
     );
   }
 
+  console.log("Analysis result:", analysisResult);
   // ─────────────────────────────────────────────
   // RENDER: analysis phase
   // ─────────────────────────────────────────────
@@ -630,10 +652,7 @@ export function OcrScanner({ userId }: { userId?: string }) {
           <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 5, gap: 2 }}>
             <CircularProgress size={48} />
             <Typography variant="body2" color="text.secondary">
-              Reading ingredients with AI…
-            </Typography>
-            <Typography variant="caption" color="text.disabled" sx={{ textAlign: "center" }}>
-              Google Vision is extracting text, then GPT-4o-mini is analysing each ingredient
+              Reading ingredients…
             </Typography>
           </Box>
         )}
@@ -657,8 +676,8 @@ export function OcrScanner({ userId }: { userId?: string }) {
             {analyzeError.message.includes("NO_TEXT_FOUND")
               ? "No text detected — try better lighting or a clearer photo."
               : analyzeError.message.includes("NO_INGREDIENTS_FOUND")
-              ? "Couldn't find an ingredient list — make sure the label is visible."
-              : `Analysis failed: ${analyzeError.message}`}
+                ? "Couldn't find an ingredient list — make sure the label is visible."
+                : `Analysis failed: ${analyzeError.message}`}
           </Alert>
         )}
 
@@ -667,6 +686,27 @@ export function OcrScanner({ userId }: { userId?: string }) {
           <Stack spacing={2}>
             {/* Risk summary */}
             <RiskSummaryBanner result={analysisResult} />
+
+            {analysisResult.ingredients.length > 0 && (
+              <Grid item xs={12}>
+                <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <WarningAmberIcon fontSize="small" color="warning" /> ADDITIVES DETECTED
+                </Typography>
+                <Stack spacing={1} sx={{ mt: 1 }}>
+                  {analysisResult.ingredients.map((item, i) => (
+                    <IngredientCard key={i} item={item} />
+                  ))}
+                </Stack>
+              </Grid>
+            )}
+
+            <Divider sx={{ my: 2, opacity: 0.5 }} />
+
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
+              Smart Analysis:
+            </Typography>
+            <SmartInsights text={analysisResult.ocr.ingredient_section} />
+
 
             {/* Filter chips */}
             <Box>
@@ -706,8 +746,8 @@ export function OcrScanner({ userId }: { userId?: string }) {
                         bgcolor: isActive
                           ? cfg?.color ?? "primary.main"
                           : cfg
-                          ? `${cfg.color}18`
-                          : "action.selected",
+                            ? `${cfg.color}18`
+                            : "action.selected",
                         color: isActive ? "#fff" : cfg?.color ?? "text.primary",
                         border: "1px solid",
                         borderColor: isActive

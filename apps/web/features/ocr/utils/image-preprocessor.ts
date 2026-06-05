@@ -23,6 +23,9 @@ const JPEG_QUALITY = 0.88;
 export async function preprocessImage(
   source: Blob | HTMLVideoElement | HTMLCanvasElement
 ): Promise<ProcessedImage> {
+  let vw = 0;
+  let vh = 0;
+
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d")!;
 
@@ -43,7 +46,9 @@ export async function preprocessImage(
     const sctx = srcCanvas.getContext("2d")!;
     sctx.drawImage(source, 0, 0);
   } else if (source instanceof HTMLCanvasElement) {
-    if (!source.width || !source.height) {
+    vw = source.width;
+    vh = source.height;
+    if (!vw || !vh) {
       throw new Error("Canvas has invalid dimensions");
     }
     srcCanvas = source;

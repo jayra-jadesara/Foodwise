@@ -45,6 +45,11 @@ export function useOcrCamera(): UseOcrCameraReturn {
   }, []);
 
   const startCamera = useCallback(async () => {
+    // 1. Cleanup any existing stream first
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus("unsupported");
       setError("Camera not supported on this device.");
@@ -105,7 +110,12 @@ export function useOcrCamera(): UseOcrCameraReturn {
 
   // ── Capture current video frame ────────────────
   const captureFrame = useCallback(async (): Promise<ProcessedImage | null> => {
-    const video = videoRef.current;
+    const video = videoRef?.current;
+
+    if (!video || video?.videoWidth === 0) {
+      await new Promise(r => setTimeout(r, 100));
+    }
+    if (!video || video?.videoWidth === 0) return null;
 
     if (!video || status !== "active") {
       return null;
