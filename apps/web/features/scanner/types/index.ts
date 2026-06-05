@@ -72,6 +72,7 @@ export interface ScoreBreakdown {
 export interface HealthScore {
   total: number; // 0–100
   grade: "A" | "B" | "C" | "D" | "F";
+  verdict: string; // e.g. "High Sugar", "Ultra-Processed", "Contains Allergens"
   breakdown: ScoreBreakdown;
   ingredient_risks: IngredientRisk[];
   computed_at: string;

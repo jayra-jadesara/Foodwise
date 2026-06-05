@@ -31,11 +31,21 @@ export async function preprocessImage(
 
   if (source instanceof HTMLVideoElement) {
     srcCanvas = document.createElement("canvas");
-    srcCanvas.width = source.videoWidth;
-    srcCanvas.height = source.videoHeight;
+    const vw = source.videoWidth;
+    const vh = source.videoHeight;
+
+    if (!vw || !vh) {
+      throw new Error("Video frame dimensions are invalid");
+    }
+
+    srcCanvas.width = vw;
+    srcCanvas.height = vh;
     const sctx = srcCanvas.getContext("2d")!;
     sctx.drawImage(source, 0, 0);
   } else if (source instanceof HTMLCanvasElement) {
+    if (!source.width || !source.height) {
+      throw new Error("Canvas has invalid dimensions");
+    }
     srcCanvas = source;
   } else {
     // Blob / File
@@ -86,10 +96,16 @@ export async function preprocessImage(
 
 // ── Capture a still frame from a <video> element ─
 export function captureVideoFrame(video: HTMLVideoElement): HTMLCanvasElement {
+  if (!video.videoWidth || !video.videoHeight) {
+    throw new Error("Video not ready yet");
+  }
   const canvas = document.createElement("canvas");
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
   const ctx = canvas.getContext("2d")!;
+  if (!ctx) {
+    throw new Error("Could not get canvas context");
+  }
   ctx.drawImage(video, 0, 0);
   return canvas;
 }
@@ -98,8 +114,17 @@ export function captureVideoFrame(video: HTMLVideoElement): HTMLCanvasElement {
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
+
+    img.onload = async () => {
+      try {
+        await img.decode();
+      } catch { }
+
+      resolve(img);
+    };
+
     img.onerror = reject;
+
     img.src = url;
   });
 }

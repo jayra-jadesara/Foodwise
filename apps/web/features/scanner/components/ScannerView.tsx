@@ -67,8 +67,8 @@ export function ScannerView({ userId, onAddToList, onCompare }: Props) {
         code === "NOT_FOUND"
           ? "Product not found in database."
           : code === "INVALID_BARCODE"
-          ? "Invalid barcode. Try scanning again."
-          : "Something went wrong. Please try again.";
+            ? "Invalid barcode. Try scanning again."
+            : "Something went wrong. Please try again.";
       setSnackbar({ open: true, message, severity: "error" });
     },
   });
@@ -104,6 +104,27 @@ export function ScannerView({ userId, onAddToList, onCompare }: Props) {
     } catch {
       // Torch not supported — silently ignore
     }
+  };
+
+  const handleAddToList = (result: ScanResult) => {
+    // We will build the full Grocery List module next, 
+    // but for now, let's show a success message.
+    setSnackbar({
+      open: true,
+      message: `Added ${result.product.name} to your Grocery List!`,
+      severity: "info"
+    });
+    setResultSheetOpen(false);
+  };
+
+  const handleCompare = (result: ScanResult) => {
+    // This will eventually open the Compare screen
+    setSnackbar({
+      open: true,
+      message: "Added to comparison. Scan another product to compare!",
+      severity: "info"
+    });
+    setResultSheetOpen(false);
   };
 
   return (
@@ -316,8 +337,8 @@ export function ScannerView({ userId, onAddToList, onCompare }: Props) {
                         boxShadow: "0 0 6px rgba(255,80,80,0.8)",
                         animation: "laserSweep 2s ease-in-out infinite",
                         "@keyframes laserSweep": {
-                          "0%":   { top: "15%", opacity: 0.4 },
-                          "50%":  { opacity: 1 },
+                          "0%": { top: "15%", opacity: 0.4 },
+                          "50%": { opacity: 1 },
                           "100%": { top: "82%", opacity: 0.4 },
                         },
                       }}
@@ -434,8 +455,10 @@ export function ScannerView({ userId, onAddToList, onCompare }: Props) {
         onClose={() => setResultSheetOpen(false)}
         result={currentResult}
         loading={scanning}
-        onAddToList={onAddToList}
-        onCompare={onCompare}
+        // onAddToList={onAddToList}
+        // onCompare={onCompare}
+        onAddToList={handleAddToList}
+        onCompare={handleCompare}
       />
 
       {/* ── Error snackbar ── */}

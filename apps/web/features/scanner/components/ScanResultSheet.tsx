@@ -19,6 +19,7 @@ import {
   Button,
   Skeleton,
   Alert,
+  Paper,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -164,6 +165,22 @@ export function ScanResultSheet({
                 <HealthScoreDial score={result.health_score} size={200} />
               </Box>
             </Box>
+
+            <Paper
+              elevation={0}
+              sx={{
+                p: 2,
+                textAlign: 'center',
+                borderRadius: 3,
+                bgcolor: result.health_score.total < 50 ? 'error.50' : 'success.50',
+                border: '1px solid',
+                borderColor: result.health_score.total < 50 ? 'error.light' : 'success.light'
+              }}
+            >
+              <Typography variant="body2" fontWeight={700} color={result.health_score.total < 50 ? 'error.main' : 'success.main'}>
+                {result.health_score.verdict || "Analysis Complete"}
+              </Typography>
+            </Paper>
 
             {/* ── Action buttons ── */}
             <Stack direction="row" spacing={1.5}>

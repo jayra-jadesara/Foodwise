@@ -67,8 +67,24 @@ export function useOcrCamera(): UseOcrCameraReturn {
       streamRef.current = stream;
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        const video = videoRef.current;
+
+        video.srcObject = stream;
+
+        // Wait for metadata
+        await new Promise<void>((resolve) => {
+          if (video.readyState >= 1) {
+            resolve();
+            return;
+          }
+
+          video.onloadedmetadata = () => resolve();
+        });
+
+        await video.play();
+
+        // Extra safety for Android/WebView cameras
+        await new Promise((resolve) => setTimeout(resolve, 150));
       }
 
       setStatus("active");
@@ -89,10 +105,23 @@ export function useOcrCamera(): UseOcrCameraReturn {
 
   // ── Capture current video frame ────────────────
   const captureFrame = useCallback(async (): Promise<ProcessedImage | null> => {
-    if (!videoRef.current || status !== "active") return null;
+    const video = videoRef.current;
+
+    if (!video || status !== "active") {
+      return null;
+    }
+
+    if (
+      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA ||
+      !video.videoWidth ||
+      !video.videoHeight
+    ) {
+      console.warn("[useOcrCamera] video not ready");
+      return null;
+    }
 
     try {
-      return await preprocessImage(videoRef.current);
+      return await preprocessImage(video);
     } catch (err) {
       console.error("[useOcrCamera] capture failed", err);
       return null;

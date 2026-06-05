@@ -78,6 +78,32 @@ function scoreProfileMatch(product: Product, userPreferences?: any): number {
   return hasAllergen ? 0 : 10;
 }
 
+// Add this helper function inside the file
+function getHealthVerdict(product: any, score: number) {
+  const n = product.nutriments;
+  const isHighSugar = n.sugars_100g > 15;
+  const isUltraProcessed = product.nova_group === 4;
+  const isHighSalt = n.salt_100g > 1.2;
+
+  // 1. Critical Warnings for Children
+  if (isHighSugar && isUltraProcessed) {
+    return "Not recommended for children. High sugar and ultra-processed.";
+  }
+  if (isHighSugar) {
+    return "Limit for children. High sugar content.";
+  }
+  if (isHighSalt) {
+    return "Not suitable for toddlers. High sodium content.";
+  }
+
+  // 2. General Verdicts
+  if (score >= 80) return "Excellent choice for the whole family!";
+  if (score >= 65) return "Good everyday option.";
+  if (score >= 45) return "Okay in moderation.";
+
+  return "Avoid if possible. Look for a healthier alternative.";
+}
+
 // ─── Main export ───────────────────────────────────────────────
 export function computeHealthScore(product: Product, userPreferences?: any): HealthScore {
   const nutritionScore = scoreNutrition(product);
@@ -91,6 +117,8 @@ export function computeHealthScore(product: Product, userPreferences?: any): Hea
 
   const total = Math.round(nutritionScore + ingredientsScore + processingScore + profileScore);
 
+  const verdict = getHealthVerdict(product, total);
+
   const getGrade = (t: number) => {
     if (t >= 80) return "A";
     if (t >= 65) return "B";
@@ -102,6 +130,7 @@ export function computeHealthScore(product: Product, userPreferences?: any): Hea
   return {
     total,
     grade: getGrade(total),
+    verdict,
     breakdown: {
       nutrition: nutritionScore,
       ingredients: ingredientsScore,
