@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// FoodWise · Scanner Module · React Query Hooks
+// FoodWise · Scanner Module · Mobile-Ready Hooks
 // ─────────────────────────────────────────────
 
 import {
@@ -8,31 +8,36 @@ import {
   useQueryClient,
   type UseMutationOptions,
 } from "@tanstack/react-query";
+import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client"; // Use Browser Client
 import type {
-  BarcodeLookupApiResponse,
   ScanResult,
   ScanHistoryItem,
 } from "../types";
 
-// ── Query key factory ──────────────────────────
-export const scannerKeys = {
+const scannerKeys = {
   all: ["scanner"] as const,
   product: (barcode: string) => ["scanner", "product", barcode] as const,
   history: (userId: string) => ["scanner", "history", userId] as const,
 };
 
+export { scannerKeys };
+
 // ── Barcode lookup function ────────────────────
+// NOTE: For mobile, we call the Supabase Edge Function directly 
+// to keep the lookup logic (OpenFoodFacts) secure and off the client.
 async function lookupBarcode(barcode: string): Promise<ScanResult> {
-  const res = await fetch("/api/scan/barcode", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ barcode }),
+  const supabase = getSupabaseBrowserClient();
+  
+  // We invoke the Supabase Edge Function we created earlier
+  // This works on Web, Android, and iOS.
+  const { data, error } = await supabase.functions.invoke('barcode-lookup', {
+    body: { barcode },
   });
 
-  const data: BarcodeLookupApiResponse = await res.json();
-
-  if (!data.success) {
-    throw Object.assign(new Error(data.error), { code: data.code });
+  if (error || !data.success) {
+    throw Object.assign(new Error(error?.message || data?.error), { 
+      code: error?.status === 404 ? "NOT_FOUND" : "INTERNAL_ERROR" 
+    });
   }
 
   return data.data;
@@ -47,8 +52,9 @@ export function useBarcodeScan(
   return useMutation<ScanResult, Error, string>({
     mutationFn: lookupBarcode,
     onSuccess: (data, barcode) => {
-      // Cache the product so subsequent lookups are instant
       queryClient.setQueryData(scannerKeys.product(barcode), data);
+      // Invalidate history so the new scan appears in the list
+      queryClient.invalidateQueries({ queryKey: scannerKeys.all });
     },
     ...options,
   });
@@ -60,45 +66,45 @@ export function useProduct(barcode: string | null) {
     queryKey: scannerKeys.product(barcode ?? ""),
     queryFn: () => lookupBarcode(barcode!),
     enabled: !!barcode && /^\d{8,14}$/.test(barcode),
-    staleTime: 1000 * 60 * 60 * 24, // 24h — product data doesn't change often
-    gcTime: 1000 * 60 * 60 * 48,
-    retry: (failureCount, error) => {
-      const code = (error as Error & { code?: string }).code;
-      // Don't retry if the product simply doesn't exist
-      if (code === "NOT_FOUND" || code === "INVALID_BARCODE") return false;
-      return failureCount < 2;
-    },
+    staleTime: 1000 * 60 * 60, // 1 hour
   });
 }
 
 // ── Query: scan history for current user ──────
-async function fetchScanHistory(userId: string): Promise<ScanHistoryItem[]> {
-  const res = await fetch(`/api/scan/history?user_id=${userId}&limit=50`);
-  if (!res.ok) throw new Error("Failed to load history");
-  return res.json();
-}
-
 export function useScanHistory(userId: string | undefined) {
+  const supabase = getSupabaseBrowserClient();
+
   return useQuery<ScanHistoryItem[]>({
     queryKey: scannerKeys.history(userId ?? ""),
-    queryFn: () => fetchScanHistory(userId!),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("scan_history")
+        .select("*")
+        .eq("user_id", userId)
+        .order("scanned_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      return data as ScanHistoryItem[];
+    },
     enabled: !!userId,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
 
 // ── Mutation: clear scan history ──────────────
 export function useClearHistory(userId: string) {
   const queryClient = useQueryClient();
+  const supabase = getSupabaseBrowserClient();
 
   return useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/scan/history", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId }),
-      });
-      if (!res.ok) throw new Error("Failed to clear history");
+      const { error } = await supabase
+        .from("scan_history")
+        .delete()
+        .eq("user_id", userId);
+        
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scannerKeys.history(userId) });
