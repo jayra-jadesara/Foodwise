@@ -1,47 +1,22 @@
-// ─────────────────────────────────────────────
-// FoodWise · app/(app)/scan/page.tsx
-// ─────────────────────────────────────────────
+"use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Box, CircularProgress } from "@mui/material";
-import { getSupabaseServerClient } from "@/shared/lib/supabase/server";
+import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
 import { ScannerView } from "@/features/scanner/components/ScannerView";
-import type { Metadata } from "next";
 
-export const metadata: Metadata = {
-  title: "Scan — FoodWise",
-  description: "Scan a barcode or ingredient label for instant health analysis",
-};
+export default function ScanPage() {
+  const [userId, setUserId] = useState<string | undefined>();
+  const supabase = getSupabaseBrowserClient();
 
-export default async function ScanPage() {
-  const supabase = await getSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id));
+  }, []);
 
   return (
-    <Box
-      sx={{
-        // Full remaining height after bottom nav (56px)
-        height: "calc(100dvh - 56px)",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      <Suspense
-        fallback={
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-            }}
-          >
-            <CircularProgress />
-          </Box>
-        }
-      >
-        <ScannerView userId={user?.id} />
+    <Box sx={{ height: "calc(100dvh - 56px)", display: "flex", flexDirection: "column" }}>
+      <Suspense fallback={<Box sx={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center" }}><CircularProgress /></Box>}>
+        <ScannerView userId={userId} />
       </Suspense>
     </Box>
   );
