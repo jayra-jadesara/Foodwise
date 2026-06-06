@@ -2,6 +2,8 @@
 // FoodWise · app/(app)/scan/page.tsx
 // ─────────────────────────────────────────────
 
+"use client";
+
 import { Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import { getSupabaseServerClient } from "@/shared/lib/supabase/server";

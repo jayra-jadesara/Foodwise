@@ -9,7 +9,8 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "build:mobile": "next build",
-    "static:sync": "npm run build:mobile && npx cap sync"
+    "static:sync": "npm run build:mobile && npx cap sync",
+    "vercel-build": "npm run prepare && next build"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

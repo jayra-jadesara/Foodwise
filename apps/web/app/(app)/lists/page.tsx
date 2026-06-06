@@ -2,6 +2,8 @@
 // FoodWise · Lists Page
 // ─────────────────────────────────────────────
 
+"use client";
+
 import { getSupabaseServerClient } from "@/shared/lib/supabase/server";
 import { GroceryListsView } from "@/features/lists/components/GroceryListsView";
 import type { Metadata } from "next";

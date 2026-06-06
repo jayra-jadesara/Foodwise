@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
 // FoodWise · Profile Page
 // ─────────────────────────────────────────────
+"use client";
 
 import { getSupabaseServerClient } from "@/shared/lib/supabase/server";
 import { ProfileView } from "@/features/profile/components/ProfileView";
