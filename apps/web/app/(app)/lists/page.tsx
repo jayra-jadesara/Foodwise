@@ -5,7 +5,7 @@ import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
 import { GroceryListsView } from "@/features/lists/components/GroceryListsView";
 
 export default async function ListsPage() {
-  const [state, setState] = useState<any>(null);
+  const [state, setState] = useState<any>({ user: null, initialLists: [], userId: null });
 
   useEffect(() => {
     async function loadData() {

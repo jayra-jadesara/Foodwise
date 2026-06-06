@@ -1,17 +1,30 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
 import { Box, CircularProgress } from "@mui/material";
 import { DashboardView } from "@/features/dashboard/components/DashboardView";
 
 export default function DashboardPage() {
-  const [state, setState] = useState<any>(null);
+  const [state, setState] = useState<any>({
+    user: null,
+    recentScans: [],
+    weeklyCount: 0,
+    avgScore: 0
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       const supabase = await getSupabaseBrowserClient();
+      if (!supabase.auth) return;
+
       const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       const userId = user?.id ?? "";
 
@@ -46,24 +59,25 @@ export default function DashboardPage() {
             scoreRows.reduce((s: number, r: { health_score_total: number }) => s + (r?.health_score_total ?? 0), 0) /
             scoreRows?.length || 0
           )
-          : null;
+          : 0;
 
-      setState({ user, recentScans: recentScans || [], weeklyCount, avgScore });
+      setState({ user, recentScans: recentScans || [], weeklyCount: weeklyCount || 0, avgScore });
+      setLoading(false);
     }
 
     loadData();
   }, []);
 
 
+  if (loading || !state) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", pt: 8 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
-    <Suspense
-      fallback={
-        <Box sx={{ display: "flex", justifyContent: "center", pt: 8 }}>
-          <CircularProgress />
-        </Box>
-      }
-    >
-      <DashboardView {...state} />
-    </Suspense>
+    <DashboardView {...state} />
   );
 }

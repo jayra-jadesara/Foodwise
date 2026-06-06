@@ -5,7 +5,7 @@ import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
 import { ProfileView } from "@/features/profile/components/ProfileView";
 
 export default function ProfilePage() {
-  const [state, setState] = useState<any>(null);
+  const [state, setState] = useState<any>({ user: null, profile: null });
 
   useEffect(() => {
     async function loadData() {
