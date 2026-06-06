@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       {
         cookies: {
           getAll: () => cookieStore.getAll(),
-          setAll: (toSet) => {
+          setAll: (toSet: { name: string; value: string; options: any }[]) => {
             toSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
           },
         },
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     );
 
     // 3. Get User (to personalize the score)
-      const supabase = await getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     let userPrefs = null;
 

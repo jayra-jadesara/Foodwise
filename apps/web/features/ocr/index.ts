@@ -10,10 +10,7 @@ export { useOcrCamera } from "./hooks/use-ocr-camera";
 
 // Queries
 export {
-  useOcrAnalyze,
-  useOcrResult,
-  useOcrHistory,
-  ocrKeys,
+  useOcrAnalyze
 } from "./queries/use-ocr";
 
 // Schemas

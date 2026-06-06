@@ -635,9 +635,9 @@ export function OcrScanner({ userId }: { userId?: string }) {
               textTransform: "none",
               fontWeight: 600,
               fontSize: "0.75rem",
-              bgcolor: "rgba(0,0,0,0.6)",
+              bgcolor: "rgba(194, 191, 191, 0.6)",
               backdropFilter: "blur(8px)",
-              "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
+              "&:hover": { bgcolor: "rgba(248, 248, 248, 0.8)" },
             }}
           >
             Scan again
@@ -687,6 +687,13 @@ export function OcrScanner({ userId }: { userId?: string }) {
             {/* Risk summary */}
             <RiskSummaryBanner result={analysisResult} />
 
+            {analysisResult.ingredients.length === 0 && (
+              <Paper sx={{ p: 2, bgcolor: 'success.50', borderRadius: 2 }}>
+                <Typography variant="body2">
+                  Real food detected: {analysisResult?.detected_natural?.join(", ")}
+                </Typography>
+              </Paper>
+            )}
             {analysisResult.ingredients.length > 0 && (
               <Grid item xs={12}>
                 <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>

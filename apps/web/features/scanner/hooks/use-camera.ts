@@ -46,17 +46,25 @@ export function useCamera({
   const stopCamera = useCallback(() => {
     activeRef.current = false;
 
-    // stopAsyncDecode() is the correct method on BrowserMultiFormatReader
-    if (readerRef.current) {
-      try { readerRef.current.stopAsyncDecode(); } catch { /* ignore */ }
-      readerRef.current = null;
-    }
+    // Remove ZXing reader reference
+    readerRef.current = null;
 
-    // Also stop any raw media tracks attached to the video element
+    // Stop all media tracks
     if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((t) => t.stop());
+
+      stream.getTracks().forEach((track) => {
+        track.stop();
+      });
+
       videoRef.current.srcObject = null;
+    }
+
+    // Pause + cleanup video element
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.removeAttribute("src");
+      videoRef.current.load();
     }
 
     setStatus("idle");

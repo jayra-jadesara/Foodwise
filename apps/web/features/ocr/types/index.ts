@@ -70,6 +70,7 @@ export interface OcrAnalysisResult {
   ai_model: string;                    // e.g. "gpt-4o-mini"
   processing_ms: number;
   created_at: string;
+  detected_natural?: string[];          // Detected natural ingredients (for positive reinforcement)
 }
 
 // ── Capture image payload ──────────────────────
@@ -96,12 +97,12 @@ export interface OcrAnalyzeError {
   success: false;
   error: string;
   code:
-    | "NO_TEXT_FOUND"
-    | "NO_INGREDIENTS_FOUND"
-    | "IMAGE_TOO_LARGE"
-    | "OCR_FAILED"
-    | "AI_FAILED"
-    | "INTERNAL_ERROR";
+  | "NO_TEXT_FOUND"
+  | "NO_INGREDIENTS_FOUND"
+  | "IMAGE_TOO_LARGE"
+  | "OCR_FAILED"
+  | "AI_FAILED"
+  | "INTERNAL_ERROR";
 }
 
 export type OcrApiResponse = OcrAnalyzeResponse | OcrAnalyzeError;

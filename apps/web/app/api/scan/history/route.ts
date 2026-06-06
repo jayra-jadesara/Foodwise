@@ -13,7 +13,7 @@ function getServiceClient() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { cookies: { getAll: () => [], setAll: () => {} } }
+    { cookies: { getAll: () => [], setAll: () => { } } }
   );
 }
 
@@ -25,7 +25,7 @@ async function getAuthenticatedUser() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (toSet) => {
+        setAll: (toSet: { name: string; value: string; options: any }[]) => {
           toSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options)
           );

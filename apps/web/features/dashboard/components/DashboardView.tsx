@@ -132,7 +132,7 @@ export function DashboardView({ user, recentScans, weeklyCount, avgScore }: Prop
           <Box sx={{ flex: 1 }}>
             <Typography fontWeight={600} fontSize="0.9rem">Scan Ingredients</Typography>
             <Typography variant="caption" color="text.secondary">
-              AI-powered label analysis
+              Label analysis
             </Typography>
           </Box>
           <ChevronRightIcon fontSize="small" color="action" />
