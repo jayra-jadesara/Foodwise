@@ -3,8 +3,6 @@
 // Fetches live data — no static content
 // ─────────────────────────────────────────────
 
-"use client";
-
 import { Suspense } from "react";
 import { Box, CircularProgress } from "@mui/material";
 import { getSupabaseServerClient } from "@/shared/lib/supabase/server";
