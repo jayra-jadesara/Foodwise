@@ -1,26 +1,20 @@
 import withPWA from "next-pwa";
 import type { NextConfig } from "next";
 
+const isMobile = process.env.CAPACITOR_BUILD === 'true';
+
 const nextConfig: NextConfig = {
-  // CRITICAL: Required for Capacitor mobile builds
-  output: 'export', 
-  
-  // Required because native apps don't have an image optimization server
+  // ✅ Only use 'export' when building for Android/iOS
+  // This allows Vercel to work normally as a Web Server
+  output: isMobile ? 'export' : undefined, 
+
   images: {
     unoptimized: true,
   },
-
-  transpilePackages: [
-    "@mui/material",
-    "@mui/system",
-    "@mui/icons-material",
-  ],
-
+  
+  transpilePackages: ["@mui/material", "@mui/system", "@mui/icons-material"],
   experimental: {
-    optimizePackageImports: [
-      "@mui/material",
-      "@mui/icons-material",
-    ],
+    optimizePackageImports: ["@mui/material", "@mui/icons-material"],
   },
 };
 
