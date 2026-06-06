@@ -45,9 +45,9 @@ export default async function DashboardPage() {
   const avgScore =
     scoreRows && scoreRows.length > 0
       ? Math.round(
-          scoreRows.reduce((s, r) => s + (r.health_score_total ?? 0), 0) /
-          scoreRows.length
-        )
+        scoreRows.reduce((s, r) => s + (r.health_score_total ?? 0), 0) /
+        scoreRows.length
+      )
       : null;
 
   return (
