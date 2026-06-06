@@ -10,7 +10,11 @@ export default function ScanPage() {
   const supabase = getSupabaseBrowserClient();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id));
+    supabase.auth.getUser().then(
+      ({ data }: { data: { user: { id: string } | null } }) => {
+        setUserId(data?.user?.id ?? "");
+      }
+    );
   }, []);
 
   return (
