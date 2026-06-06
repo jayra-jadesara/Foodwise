@@ -41,10 +41,10 @@ export default function DashboardPage() {
         .limit(20);
 
       const avgScore =
-        scoreRows && scoreRows.length > 0
+        scoreRows && scoreRows?.length > 0
           ? Math.round(
-            scoreRows.reduce((s: number, r: { health_score_total: number }) => s + (r.health_score_total ?? 0), 0) /
-            scoreRows.length
+            scoreRows.reduce((s: number, r: { health_score_total: number }) => s + (r?.health_score_total ?? 0), 0) /
+            scoreRows?.length || 0
           )
           : null;
 
