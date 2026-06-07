@@ -50,4 +50,4 @@ export type {
 
 // Utils
 export { computeHealthScore } from "./utils/health-score";
-export { fetchFromOFF }       from "./utils/off-adapter";
+export { fetchProductMetadata }       from "./utils/off-adapter";
