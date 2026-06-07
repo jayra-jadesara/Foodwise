@@ -107,19 +107,19 @@ async function fetchFromEdamam(barcode: string): Promise<ProductDraft | null> {
   const data = await res.json();
 
   if (!data.hints || data.hints.length === 0) return null;
-  const f = data.hints[0].food;
+  const f = data?.hints[0]?.food;
 
   return {
     barcode,
-    name: f.label,
-    brand: f.brand || "Unknown Brand",
-    image_url: f.image,
+    name: f?.label,
+    brand: f?.brand || "Unknown Brand",
+    image_url: f?.image,
     nutriments: {
-      energy_kcal_100g: f.nutrients.ENERC_KCAL,
-      proteins_100g: f.nutrients.PROCNT,
-      fat_100g: f.nutrients.FAT,
-      carbohydrates_100g: f.nutrients.CHOCDF,
-      fiber_100g: f.nutrients.FIBTG
+      energy_kcal_100g: f?.nutrients?.ENERC_KCAL,
+      proteins_100g: f?.nutrients?.PROCNT,
+      fat_100g: f?.nutrients?.FAT,
+      carbohydrates_100g: f?.nutrients?.CHOCDF,
+      fiber_100g: f?.nutrients?.FIBTG
     },
     source: "admin",
     created_at: new Date().toISOString(),

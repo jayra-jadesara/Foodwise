@@ -50,17 +50,17 @@ export function getSmartInsights(text: string) {
 
 // ─── Nutrition scoring (max 40 pts) ───────────────────────────
 function scoreNutrition(product: Product): number {
-  const n = product.nutriments;
+  const n = product?.nutriments || {};
   let score = 40;
 
-  if (n.energy_kcal_100g !== undefined) {
-    if (n.energy_kcal_100g > 500) score -= 8;
-    else if (n.energy_kcal_100g > 300) score -= 4;
+  if (n?.energy_kcal_100g !== undefined) {
+    if (n?.energy_kcal_100g > 500) score -= 8;
+    else if (n?.energy_kcal_100g > 300) score -= 4;
   }
 
-  if (n.sugars_100g !== undefined && n.sugars_100g > 15) score -= 10;
-  if (n.salt_100g !== undefined && n.salt_100g > 1.5) score -= 8;
-  if (n.saturated_fat_100g !== undefined && n.saturated_fat_100g > 5) score -= 5;
+  if (n?.sugars_100g !== undefined && n?.sugars_100g > 15) score -= 10;
+  if (n?.salt_100g !== undefined && n?.salt_100g > 1.5) score -= 8;
+  if (n?.saturated_fat_100g !== undefined && n?.saturated_fat_100g > 5) score -= 5;
 
   return Math.max(0, score);
 }
