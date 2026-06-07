@@ -22,22 +22,17 @@ const scannerKeys = {
 
 export { scannerKeys };
 
-// ── Barcode lookup function ────────────────────
-// NOTE: For mobile, we call the Supabase Edge Function directly 
-// to keep the lookup logic (OpenFoodFacts) secure and off the client.
 async function lookupBarcode(barcode: string): Promise<ScanResult> {
-  const supabase = getSupabaseBrowserClient();
-  
-  // We invoke the Supabase Edge Function we created earlier
-  // This works on Web, Android, and iOS.
-  const { data, error } = await supabase.functions.invoke('barcode-lookup', {
-    body: { barcode },
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/scan/barcode`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ barcode }),
   });
 
-  if (error || !data?.success) {
-    throw Object.assign(new Error(error?.message || data?.error), { 
-      code: error?.status === 404 ? "NOT_FOUND" : "INTERNAL_ERROR" 
-    });
+  const data = await res.json();
+
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || "Lookup failed");
   }
 
   return data.data;
@@ -103,7 +98,7 @@ export function useClearHistory(userId: string) {
         .from("scan_history")
         .delete()
         .eq("user_id", userId);
-        
+
       if (error) throw error;
     },
     onSuccess: () => {

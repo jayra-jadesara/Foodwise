@@ -10,6 +10,12 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const OFF_API = "https://world.openfoodfacts.org/api/v2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 const supabase = getSupabaseBrowserClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 // ── Types (duplicated from shared — edge fn is isolated) ──────
@@ -139,14 +145,9 @@ async function fetchOFF(barcode: string): Promise<Product | null> {
 
 // ── Main handler ──────────────────────────────
 Deno.serve(async (req) => {
+  debugger;
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST",
-        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-      },
-    });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {

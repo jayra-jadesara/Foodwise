@@ -13,8 +13,30 @@ export interface ProcessedImage {
   sizeKb: number;
 }
 
-const MAX_DIMENSION = 2048;   // Google Vision handles up to 4096, but 2048 is plenty
-const JPEG_QUALITY = 0.88;
+const MAX_DIMENSION = 1600
+const JPEG_QUALITY = 0.90;
+
+
+/**
+ * The Secret: Adaptive Binarization. 
+ * Turns any colored food packet into a clean black-on-white document.
+ */
+function applyBinaryThreshold(imageData: ImageData): void {
+  const data = imageData.data;
+  // Threshold 120-130 is perfect for Balaji Wafers (removes the orange bag)
+  const threshold = 125;
+
+  for (let i = 0; i < data.length; i += 4) {
+    // 1. Get brightness using the human eye weight formula (Luminance)
+    const brightness = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+
+    // 2. Force pixel to be either Pure Black (0) or Pure White (255)
+    const val = brightness < threshold ? 0 : 255;
+
+    data[i] = data[i + 1] = data[i + 2] = val;
+    // data[i+3] is Alpha, keep it at 255
+  }
+}
 
 /**
  * Takes a Blob/File or a video element frame and returns a
@@ -23,67 +45,57 @@ const JPEG_QUALITY = 0.88;
 export async function preprocessImage(
   source: Blob | HTMLVideoElement | HTMLCanvasElement
 ): Promise<ProcessedImage> {
-  let vw = 0;
-  let vh = 0;
-
   const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
 
-  // ── Draw source onto a scratch canvas ─────────
-  let srcCanvas: HTMLCanvasElement;
+  let srcW = 0;
+  let srcH = 0;
 
+  // ── 1. Prepare Source ─────────────────────────
   if (source instanceof HTMLVideoElement) {
-    srcCanvas = document.createElement("canvas");
-    const vw = source.videoWidth;
-    const vh = source.videoHeight;
-
-    if (!vw || !vh) {
-      throw new Error("Video frame dimensions are invalid");
-    }
-
-    srcCanvas.width = vw;
-    srcCanvas.height = vh;
-    const sctx = srcCanvas.getContext("2d")!;
-    sctx.drawImage(source, 0, 0);
+    srcW = source.videoWidth;
+    srcH = source.videoHeight;
   } else if (source instanceof HTMLCanvasElement) {
-    vw = source.width;
-    vh = source.height;
-    if (!vw || !vh) {
-      throw new Error("Canvas has invalid dimensions");
-    }
-    srcCanvas = source;
+    srcW = source.width;
+    srcH = source.height;
   } else {
-    // Blob / File
     const url = URL.createObjectURL(source);
     const img = await loadImage(url);
     URL.revokeObjectURL(url);
-    srcCanvas = document.createElement("canvas");
-    srcCanvas.width = img.naturalWidth;
-    srcCanvas.height = img.naturalHeight;
-    const sctx = srcCanvas.getContext("2d")!;
-    sctx.drawImage(img, 0, 0);
+    srcW = img.naturalWidth;
+    srcH = img.naturalHeight;
   }
 
-  const { width: origW, height: origH } = srcCanvas;
+  if (!srcW || !srcH) throw new Error("Invalid source dimensions");
 
-  // ── Resize to max dimension ────────────────────
-  const scale = Math.min(1, MAX_DIMENSION / Math.max(origW, origH));
-  const w = Math.round(origW * scale);
-  const h = Math.round(origH * scale);
+  // ── 2. Smart Crop & Resize ────────────────────
+  // Focus on the center 65% of the frame (ignores background noise)
+  const zoom = 0.65;
+  const cropW = srcW * zoom;
+  const cropH = srcH * zoom;
+  const sx = (srcW - cropW) / 2;
+  const sy = (srcH - cropH) / 2;
 
-  canvas.width = w;
-  canvas.height = h;
+  const scale = Math.min(1, MAX_DIMENSION / Math.max(cropW, cropH));
+  const targetW = Math.round(cropW * scale);
+  const targetH = Math.round(cropH * scale);
 
-  // ── Enhance contrast for OCR ───────────────────
-  // Step 1: draw scaled
-  ctx.drawImage(srcCanvas, 0, 0, w, h);
+  canvas.width = targetW;
+  canvas.height = targetH;
 
-  // Step 2: apply sharpening convolution (helps OCR on blurry labels)
-  const imageData = ctx.getImageData(0, 0, w, h);
-  sharpen(imageData, w, h);
+  // ── 3. Draw and Process ───────────────────────
+  if (source instanceof HTMLVideoElement) {
+    ctx.drawImage(source, sx, sy, cropW, cropH, 0, 0, targetW, targetH);
+  } else {
+    ctx.drawImage(source as any, sx, sy, cropW, cropH, 0, 0, targetW, targetH);
+  }
+
+  // ── 4. Apply Black & White Filter ─────────────
+  const imageData = ctx.getImageData(0, 0, targetW, targetH);
+  applyBinaryThreshold(imageData);
   ctx.putImageData(imageData, 0, 0);
 
-  // ── Export as JPEG ─────────────────────────────
+  // ── 5. Export as JPEG Base64 ──────────────────
   const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
   const base64 = dataUrl.split(",")[1]!;
   const sizeKb = Math.round((base64.length * 3) / 4 / 1024);
@@ -91,10 +103,10 @@ export async function preprocessImage(
   return {
     base64,
     mimeType: "image/jpeg",
-    width: w,
-    height: h,
-    originalWidth: origW,
-    originalHeight: origH,
+    width: targetW,
+    height: targetH,
+    originalWidth: srcW,
+    originalHeight: srcH,
     sizeKb,
   };
 }
@@ -132,35 +144,6 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
     img.src = url;
   });
-}
-
-// ── 3×3 unsharp mask (sharpening) ─────────────
-function sharpen(imageData: ImageData, w: number, h: number): void {
-  const src = new Uint8ClampedArray(imageData.data);
-  const dst = imageData.data;
-
-  // Kernel: centre +5, cardinal neighbours -1
-  const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const i = (y * w + x) * 4;
-
-      for (let c = 0; c < 3; c++) {
-        let val = 0;
-        let ki = 0;
-        for (let ky = -1; ky <= 1; ky++) {
-          for (let kx = -1; kx <= 1; kx++) {
-            const si = ((y + ky) * w + (x + kx)) * 4 + c;
-            val += src[si]! * kernel[ki]!;
-            ki++;
-          }
-        }
-        dst[i + c] = Math.max(0, Math.min(255, val));
-      }
-      dst[i + 3] = src[i + 3]!; // alpha pass-through
-    }
-  }
 }
 
 /**

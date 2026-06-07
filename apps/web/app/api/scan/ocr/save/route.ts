@@ -1,49 +1,53 @@
+// ─────────────────────────────────────────────
+// FoodWise · API · POST /api/scan/ocr/save
+// Persists a locally-computed OCR analysis result
+// ─────────────────────────────────────────────
+
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { getSupabaseServerClient } from "@/shared/lib/supabase/server";
 
 export async function POST(req: NextRequest) {
   try {
-    const data = await req.json();
-    const cookieStore = await cookies();
-
-    // Use Service Role to ensure the history is saved regardless of RLS
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: (toSet: { name: string; value: string; options: any }[]) => {
-            toSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-          },
-        },
-      }
-    );
-
+    const supabase = await getSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      // Not authenticated — skip saving, return success silently
+      return NextResponse.json({ success: true, saved: false });
     }
 
-    // Save to ocr_analyses table
-    const { error } = await supabase.from('ocr_analyses').insert({
+    const body = await req.json();
+    console.log(body);
+    // const supabase_service = getSupabaseServiceClient();
+    const { error } = await supabase.from("ocr_analyses").insert({
       user_id: user.id,
-      ocr_full_text: data.ocr.ingredient_section,
-      ingredient_section: data.ocr.ingredient_section,
-      ingredients: data.ingredients, // Inserted as JSONB
-      ai_verdict: data.ai_verdict,
-      risk_summary: data.risk_summary,
-      ai_model: 'tesseract-local', // Updated from GPT
-      processing_ms: 0
+      ocr_full_text: body.ocr_full_text ?? "",
+      ocr_confidence: body.ocr_confidence ?? null,
+      ingredient_section: body.ingredient_section ?? "",
+      ingredients: body.ingredients ?? [],
+      risk_summary: body.risk_summary ?? {},
+      ai_verdict: body.ai_verdict ?? "",
+      ai_model: body.ai_model ?? "local-parser-v1",
+      processing_ms: body.processing_ms ?? null,
+      image_url: null, // local analysis — no server-stored image
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("[ocr/save]", error.message);
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    console.error("OCR Save Error:", err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: true, saved: true });
+  } catch (err) {
+    console.error("[ocr/save]", err);
+    return NextResponse.json(
+      { success: false, error: "Internal error" },
+      { status: 500 }
+    );
   }
 }
+
+export const runtime = "nodejs";

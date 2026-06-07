@@ -10,8 +10,14 @@ export { useOcrCamera } from "./hooks/use-ocr-camera";
 
 // Queries
 export {
-  useOcrAnalyze
+  useOcrAnalyze,
+  useOcrResult,
+  useOcrHistory,
+  ocrKeys,
 } from "./queries/use-ocr";
+
+// Extended result type (includes detected_natural, raw_tokens)
+export type { OcrAnalysisResultExtended } from "./queries/use-ocr";
 
 // Schemas
 export {
@@ -39,5 +45,12 @@ export type {
   OcrHistoryItem,
 } from "./types";
 
-// Utils (exposed for testing + other modules)
+// Utils
 export { preprocessImage, captureVideoFrame, processDataUrl } from "./utils/image-preprocessor";
+
+// Worker control
+export { prewarmOcrWorker, terminateOcrWorker } from "./workers/tesseract-worker";
+
+// Ingredient library (for other modules e.g. health-score)
+export { INGREDIENT_DATABASE } from "./lib/ingredient-database";
+export { analyzeIngredients, extractIngredientSection } from "./lib/ingredient-parser";

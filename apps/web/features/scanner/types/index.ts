@@ -52,9 +52,9 @@ export interface Product {
   labels?: string[]; // e.g. ["organic", "gluten-free"]
   allergens?: string[];
   ingredients_text?: string;
-  nutriments: Nutriments;
+  nutriments?: Nutriments;
   nova_group?: 1 | 2 | 3 | 4; // NOVA food processing classification
-  nutriscore_grade?: "a" | "b" | "c" | "d" | "e";
+  nutriscore_grade?: "a" | "b" | "c" | "d" | "e" | null;
   countries?: string[];
   source: "openfoodfacts" | "admin" | "user_submitted";
   created_at: string;
