@@ -34,7 +34,7 @@ async function lookupBarcode(barcode: string): Promise<ScanResult> {
     body: { barcode },
   });
 
-  if (error || !data.success) {
+  if (error || !data?.success) {
     throw Object.assign(new Error(error?.message || data?.error), { 
       code: error?.status === 404 ? "NOT_FOUND" : "INTERNAL_ERROR" 
     });
