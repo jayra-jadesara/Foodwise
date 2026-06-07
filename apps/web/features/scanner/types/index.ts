@@ -56,7 +56,7 @@ export interface Product {
   nova_group?: 1 | 2 | 3 | 4; // NOVA food processing classification
   nutriscore_grade?: "a" | "b" | "c" | "d" | "e" | null;
   countries?: string[];
-  source: "openfoodfacts" | "admin" | "user_submitted";
+  source: "openfoodfacts" | "admin" | "user_submitted" | "merged" | "edamam";
   created_at: string;
   updated_at: string;
 }

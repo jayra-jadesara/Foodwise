@@ -3,6 +3,7 @@ import { OFFProductSchema } from "../schemas";
 
 const OFF_API_BASE = "https://world.openfoodfacts.org/api/v2";
 const UPC_API_BASE = "https://api.upcitemdb.com/prod/trial/lookup";
+const EDAMAM_API_BASE = "https://api.edamam.com/api/food-database/v2/parser";
 
 // We create a "Draft" type that doesn't require the database 'id' yet
 type ProductDraft = Omit<Product, 'id'>;
@@ -20,32 +21,53 @@ type ProductDraft = Omit<Product, 'id'>;
  */
 
 export async function fetchProductMetadata(barcode: string): Promise<ProductDraft | null> {
+  let imageUrl = null;
+
   // Layer 1: OpenFoodFacts (Unlimited/Free)
   try {
     console.log('Trying From OFF for barcode:', barcode);
     const p = await fetchFromOFF(barcode);
-    if (p) return p;
+    if (p) {
+      imageUrl = p.image_url ?? null;
+      if (imageUrl) {
+        return p;
+      }
+    }
   } catch (e) { console.error("OFF Failed"); }
 
-  // Layer 2: FatSecret (Best for Indian/Regional Brands)
-  try {
-    console.log('Trying Fat Secret for barcode:', barcode);
-    const p = await fetchFromFatSecret(barcode);
-    if (p) return p;
-  } catch (e) { console.error("FatSecret Failed"); }
 
   // Layer 3: Edamam (High Nutritional Accuracy)
   try {
     console.log('Trying Edamam for barcode:', barcode);
     const p = await fetchFromEdamam(barcode);
-    if (p) return p;
+    console.log('Edamam returned product:', p);
+    if (p) {
+      imageUrl = p.image_url ?? null;
+      if (imageUrl) {
+        return p;
+      }
+    }
   } catch (e) { console.error("Edamam Failed"); }
+
+  // Layer 2: FatSecret (Best for Indian/Regional Brands)
+  try {
+    console.log('Trying Fat Secret for barcode:', barcode);
+    const p = await fetchFromFatSecret(barcode);
+    if (p) {
+      imageUrl = p.image_url ?? null;
+      if (imageUrl) {
+        return p;
+      }
+    }
+  } catch (e) { console.error("FatSecret Failed"); }
 
   // Layer 4: UPCItemDB (Retail Fallback)
   try {
     console.log('Trying UPC for  barcode:', barcode);
     const p = await fetchFromUPCItemDB(barcode);
-    if (p) return p;
+    if (p) {
+      return p;
+    }
   } catch (e) { console.error("UPCItemDB Failed"); }
 
   return null;
@@ -101,30 +123,62 @@ async function fetchFromFatSecret(barcode: string): Promise<ProductDraft | null>
 
 // ─── SOURCE 2: EDAMAM ───────────────────────────
 async function fetchFromEdamam(barcode: string): Promise<ProductDraft | null> {
-  const url = `https://api.edamam.com/api/food-database/v2/parser?upc=${barcode}&app_id=${process.env.EDAMAM_APP_ID}&app_key=${process.env.EDAMAM_APP_KEY}`;
+  // 1. Get credentials from Env
+  const appId = process.env.EDAMAM_APP_ID;
+  const appKey = process.env.EDAMAM_APP_KEY;
 
-  const res = await fetch(url);
-  const data = await res.json();
+  if (!appId || !appKey) {
+    console.error("Edamam Error: Credentials missing from .env");
+    return null;
+  }
 
-  if (!data.hints || data.hints.length === 0) return null;
-  const f = data?.hints[0]?.food;
+  try {
+    // 2. Construct URL using URLSearchParams (Ensures correct encoding)
+    const params = new URLSearchParams({
+      upc: barcode,
+      app_id: appId,
+      app_key: appKey,
+    });
 
-  return {
-    barcode,
-    name: f?.label,
-    brand: f?.brand || "Unknown Brand",
-    image_url: f?.image,
-    nutriments: {
-      energy_kcal_100g: f?.nutrients?.ENERC_KCAL,
-      proteins_100g: f?.nutrients?.PROCNT,
-      fat_100g: f?.nutrients?.FAT,
-      carbohydrates_100g: f?.nutrients?.CHOCDF,
-      fiber_100g: f?.nutrients?.FIBTG
-    },
-    source: "admin",
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  } as ProductDraft;
+    const res = await fetch(`${EDAMAM_API_BASE}?${params.toString()}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+
+    if (res.status === 401) {
+      console.error("Edamam 401: Invalid ID or Key. Check your Edamam Dashboard.");
+      return null;
+    }
+    if (!res.ok) return null;
+
+    const data = await res.json();
+
+    // 3. Parser step from OpenAPI spec: hints[0].food
+    if (!data?.hints?.length) return null;
+    const f = data.hints[0].food;
+
+    // 4. Map fields exactly from the spec
+    return {
+      barcode,
+      name: f.label || "Unknown Product",
+      brand: f.brand || "Unknown Brand",
+      image_url: f.image,
+      nutriments: {
+        // ENERC_KCAL, PROCNT, FAT, CHOCDF, FIBTG are standard Edamam keys
+        energy_kcal_100g: f.nutrients?.ENERC_KCAL,
+        proteins_100g: f.nutrients?.PROCNT,
+        fat_100g: f.nutrients?.FAT,
+        carbohydrates_100g: f.nutrients?.CHOCDF,
+        fiber_100g: f.nutrients?.FIBTG,
+      },
+      source: "edamam",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as ProductDraft;
+  } catch (err) {
+    console.error("Edamam Fetch Exception:", err);
+    return null;
+  }
 }
 
 // ─── SOURCE 3: OPEN FOOD FACTS ──────────────────
