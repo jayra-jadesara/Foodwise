@@ -127,14 +127,14 @@ export function NutritionPanel({ product }: Props) {
           </Typography>
         </Box>
         <Box sx={{ px: 0.5 }}>
-          <NutrientRow label="Energy" value={n.energy_kcal_100g} unit="kcal" />
-          <NutrientRow label="Fat" value={n.fat_100g} unit="g" highlight={n.fat_100g !== undefined && n.fat_100g > 20 ? "warn" : "neutral"} />
-          <NutrientRow label="of which saturated" value={n.saturated_fat_100g} unit="g" highlight={n.saturated_fat_100g !== undefined && n.saturated_fat_100g > 5 ? "warn" : "neutral"} />
-          <NutrientRow label="Carbohydrates" value={n.carbohydrates_100g} unit="g" />
-          <NutrientRow label="of which sugars" value={n.sugars_100g} unit="g" highlight={n.sugars_100g !== undefined && n.sugars_100g > 15 ? "warn" : "neutral"} />
-          <NutrientRow label="Fibre" value={n.fiber_100g} unit="g" highlight={n.fiber_100g !== undefined && n.fiber_100g > 3 ? "good" : "neutral"} />
-          <NutrientRow label="Protein" value={n.proteins_100g} unit="g" highlight={n.proteins_100g !== undefined && n.proteins_100g > 10 ? "good" : "neutral"} />
-          <NutrientRow label="Salt" value={n.salt_100g} unit="g" highlight={n.salt_100g !== undefined && n.salt_100g > 1.5 ? "warn" : "neutral"} />
+          <NutrientRow label="Energy" value={n?.energy_kcal_100g} unit="kcal" />
+          <NutrientRow label="Fat" value={n?.fat_100g} unit="g" highlight={n?.fat_100g !== undefined && n.fat_100g > 20 ? "warn" : "neutral"} />
+          <NutrientRow label="of which saturated" value={n?.saturated_fat_100g} unit="g" highlight={n?.saturated_fat_100g !== undefined && n.saturated_fat_100g > 5 ? "warn" : "neutral"} />
+          <NutrientRow label="Carbohydrates" value={n?.carbohydrates_100g} unit="g" />
+          <NutrientRow label="of which sugars" value={n?.sugars_100g} unit="g" highlight={n?.sugars_100g !== undefined && n.sugars_100g > 15 ? "warn" : "neutral"} />
+          <NutrientRow label="Fibre" value={n?.fiber_100g} unit="g" highlight={n?.fiber_100g !== undefined && n.fiber_100g > 3 ? "good" : "neutral"} />
+          <NutrientRow label="Protein" value={n?.proteins_100g} unit="g" highlight={n?.proteins_100g !== undefined && n.proteins_100g > 10 ? "good" : "neutral"} />
+          <NutrientRow label="Salt" value={n?.salt_100g} unit="g" highlight={n?.salt_100g !== undefined && n.salt_100g > 1.5 ? "warn" : "neutral"} />
         </Box>
       </Paper>
 
