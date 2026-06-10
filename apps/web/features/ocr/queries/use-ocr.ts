@@ -25,7 +25,7 @@ export const ocrKeys = {
 // ── Input / output types ───────────────────────
 type AnalyzePayload = {
   imageBase64: string;
-  mimeType: "image/jpeg" | "image/png" | "image/webp";
+  mimeType?: "image/jpeg" | "image/png" | "image/webp";
 };
 
 // Extended result includes detected_natural for UI

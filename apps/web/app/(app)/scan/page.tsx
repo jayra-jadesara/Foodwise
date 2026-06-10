@@ -1,9 +1,10 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { Box, CircularProgress } from "@mui/material";
+import { Box } from "@mui/material";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
 import { ScannerView } from "@/features/scanner/components/ScannerView";
+import { SplashLoader } from "@/shared/components/SplashLoader";
 
 export default function ScanPage() {
   const [userId, setUserId] = useState<string | undefined>();
@@ -19,7 +20,7 @@ export default function ScanPage() {
 
   return (
     <Box sx={{ height: "calc(100dvh - 56px)", display: "flex", flexDirection: "column" }}>
-      <Suspense fallback={<Box sx={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center" }}><CircularProgress /></Box>}>
+      <Suspense fallback={<SplashLoader />}>
         <ScannerView userId={userId} />
       </Suspense>
     </Box>

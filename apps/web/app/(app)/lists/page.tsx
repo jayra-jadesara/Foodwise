@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
 import { GroceryListsView } from "@/features/lists/components/GroceryListsView";
-import { Box, CircularProgress } from "@mui/material";
+import { SplashLoader } from "@/shared/components/SplashLoader";
 
 export default function ListsPage() {
   const [lists, setLists] = useState<any[]>([]);
@@ -45,9 +45,7 @@ export default function ListsPage() {
   // Prevent rendering the view until we have at least checked for the user
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh" }}>
-        <CircularProgress />
-      </Box>
+      <SplashLoader />
     );
   }
 

@@ -1,5 +1,14 @@
+import "./globals.css"; 
 import { Providers } from '@/shared/lib/providers';
 import type { Metadata } from 'next';
+
+export const viewport: any = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   title: 'FoodWise Intelligence',

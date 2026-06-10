@@ -13,14 +13,28 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [{ "name": "next" }],
+    "baseUrl": ".", // ✅ Added this to make paths work reliably
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
       "@/*": ["./*"],
-      "@/features/*": ["./features/*"],
-      "@/shared/*": ["./shared/*"],
-      "@/app/*": ["./app/*"]
+      "@/features/*": ["features/*"],
+      "@/shared/*": ["shared/*"],
+      "@/app/*": ["app/*"]
     }
   },
-  "include": ["next-env.d.ts", "next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "middleware.ts.bak"],
-  "exclude": ["node_modules", "supabase/functions"]
+  "include": [
+    "next-env.d.ts",
+    "additional.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts" // ✅ Keep this, Next.js needs it for typed routes
+  ],
+  "exclude": [
+    "node_modules",
+    "supabase/functions"
+  ]
 }

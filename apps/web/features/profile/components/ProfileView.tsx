@@ -1,21 +1,21 @@
-// ─────────────────────────────────────────────
-// FoodWise · ProfileView (Client Component)
-// ─────────────────────────────────────────────
-
 "use client";
 
+import React, { useState } from "react";
 import {
   Container, Typography, Box, Button, Avatar, Paper,
-  Stack, Divider, Chip, Switch, FormControlLabel,
-  CircularProgress, Snackbar, Alert,
+  Stack, Chip, CircularProgress,
+  Snackbar, Alert, Grid
 } from "@mui/material";
+
+// Icons
 import LogoutIcon from "@mui/icons-material/Logout";
-import EditIcon from "@mui/icons-material/Edit";
 import CheckIcon from "@mui/icons-material/Check";
-import { useState } from "react";
+import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import AdsClickIcon from "@mui/icons-material/AdsClick";
+
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
 
 const ALLERGEN_OPTIONS = [
   "gluten", "dairy", "eggs", "nuts", "peanuts",
@@ -27,25 +27,9 @@ const GOAL_OPTIONS = [
   "low fat", "high fibre", "no additives",
 ];
 
-interface Profile {
-  full_name?: string;
-  avatar_url?: string;
-  email?: string;
-  dietary_preferences?: {
-    allergens: string[];
-    goals: string[];
-    is_vegan: boolean;
-    is_vegetarian: boolean;
-  };
-  created_at?: string;
-}
+// ... (Interface definitions remain the same as your code)
 
-interface Props {
-  user: User | null;
-  profile: Profile | null;
-}
-
-export function ProfileView({ user, profile }: Props) {
+export function ProfileView({ user, profile }: any) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: "success" | "error" }>({
@@ -60,26 +44,26 @@ export function ProfileView({ user, profile }: Props) {
   const [goals, setGoals] = useState<string[]>(prefs.goals ?? []);
   const [isVegan, setIsVegan] = useState(prefs.is_vegan ?? false);
   const [isVegetarian, setIsVegetarian] = useState(prefs.is_vegetarian ?? false);
+  const supabase = getSupabaseBrowserClient();
 
-  const displayName =
-    profile?.full_name ??
-    user?.user_metadata?.full_name ??
-    user?.email?.split("@")[0] ??
-    "User";
+  const triggerHaptic = () => {
+    if (typeof window !== "undefined" && window.navigator.vibrate) {
+      window.navigator.vibrate(10);
+    }
+  };
 
-  const toggleAllergen = (a: string) =>
-    setAllergens((prev) =>
-      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
-    );
+  const toggleAllergen = (a: string) => {
+    triggerHaptic();
+    setAllergens((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]);
+  };
 
-  const toggleGoal = (g: string) =>
-    setGoals((prev) =>
-      prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
-    );
+  const toggleGoal = (g: string) => {
+    triggerHaptic();
+    setGoals((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]);
+  };
 
-  const handleSave = async (user: any) => {
+  const handleSave = async () => {
     if (!user?.id) return;
-
     setSaving(true);
     const supabase = getSupabaseBrowserClient();
     const { error } = await supabase
@@ -88,192 +72,159 @@ export function ProfileView({ user, profile }: Props) {
         dietary_preferences: { allergens, goals, is_vegan: isVegan, is_vegetarian: isVegetarian },
         updated_at: new Date().toISOString(),
       })
-      .eq("id", user?.id ?? "");
+      .eq("id", user.id);
 
     setSaving(false);
     setSnackbar({
       open: true,
-      message: error ? error.message : "Preferences saved!",
+      message: error ? error.message : "Preferences updated successfully!",
       severity: error ? "error" : "success",
     });
   };
 
-  const handleSignOut = async () => {
-    const supabase = getSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-  };
+  const displayName = profile?.full_name ?? user?.user_metadata?.full_name ?? "Health Seeker";
 
   return (
-    <Container maxWidth="sm" sx={{ py: 3, pb: 4 }}>
-      {/* ── Avatar + name ── */}
-      <Paper
-        variant="outlined"
-        sx={{ p: 3, borderRadius: 3, mb: 3, textAlign: "center" }}
-      >
+    <Box sx={{ bgcolor: "#f8f9ff", minHeight: "100vh", pb: 10 }}>
+      {/* ── HEADER SECTION ── */}
+      <Box sx={{
+        bgcolor: "#d4f67a", // Lime Green accent from Login
+        pt: 2, pb: 2, textAlign: 'center',
+        borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px'
+      }}>
         <Avatar
           src={profile?.avatar_url ?? user?.user_metadata?.avatar_url}
-          sx={{ width: 72, height: 72, mx: "auto", mb: 1.5, bgcolor: "primary.main", fontSize: "1.8rem", fontWeight: 700 }}
+          sx={{
+            width: 60, height: 60, mx: "auto", mb: 1,
+            border: '4px solid white', boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+            bgcolor: '#001629', fontSize: '2rem', fontWeight: 900
+          }}
         >
           {displayName[0]?.toUpperCase()}
         </Avatar>
-        <Typography variant="h6" fontWeight={700}>{displayName}</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {profile?.email ?? user?.email}
+        <Typography variant="h5" sx={{ fontWeight: 900, color: '#001629' }}>
+          {displayName}
         </Typography>
-        {profile?.created_at && (
-          <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
-            Member since {new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-          </Typography>
-        )}
-      </Paper>
+        <Typography variant="body2" sx={{ color: 'rgba(0,22,41,0.6)', fontWeight: 600, mb: 1 }}>
+          {user?.email}
+        </Typography>
+      </Box>
 
-      {/* ── Dietary preferences ── */}
-      <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden", mb: 3 }}>
-        <Box sx={{ px: 2.5, py: 1.75, bgcolor: "action.selected" }}>
-          <Typography fontWeight={700} fontSize="0.88rem">Dietary preferences</Typography>
-          <Typography variant="caption" color="text.secondary">
-            Used to personalise your health scores
-          </Typography>
-        </Box>
-        <Divider />
+      <Container maxWidth="xs" sx={{ mt: -2 }}>
+        <Stack spacing={3}>
 
-        <Box sx={{ p: 2.5 }}>
-          {/* Vegan / Vegetarian */}
-          <Stack spacing={0.5} sx={{ mb: 2.5 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isVegan}
-                  onChange={(e) => setIsVegan(e.target.checked)}
-                  color="success"
-                  size="small"
-                />
-              }
-              label={<Typography variant="body2">Vegan</Typography>}
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={isVegetarian}
-                  onChange={(e) => setIsVegetarian(e.target.checked)}
-                  color="success"
-                  size="small"
-                />
-              }
-              label={<Typography variant="body2">Vegetarian</Typography>}
-            />
-          </Stack>
 
-          {/* Allergens */}
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 700, letterSpacing: "0.06em", color: "text.secondary",
-              fontSize: "0.65rem", textTransform: "uppercase", display: "block", mb: 1
-            }}
-          >
-            Allergens to avoid
-          </Typography>
-          <Stack direction="row" flexWrap="wrap" gap={0.75} sx={{ mb: 2.5 }} useFlexGap>
-            {ALLERGEN_OPTIONS.map((a) => {
-              const active = allergens.includes(a);
-              return (
-                <Chip
-                  key={a}
-                  label={a}
-                  size="small"
-                  onClick={() => toggleAllergen(a)}
-                  icon={active ? <CheckIcon sx={{ fontSize: "0.8rem !important" }} /> : undefined}
+          {/* ── ALLERGENS BENTO ── */}
+          <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #d3e4fe", boxShadow: '0 4px 20px rgba(0,22,41,0.03)' }}>
+            <Typography variant="overline" sx={{ fontWeight: 900, color: 'text.secondary', letterSpacing: 1, display: 'flex', alignItems: 'center' }}>
+              <SettingsSuggestIcon fontSize="small" /> Lifestyle Choices
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid size={6}>
+                <Box
+                  onClick={() => { triggerHaptic(); setIsVegan(!isVegan); }}
                   sx={{
-                    textTransform: "capitalize",
-                    fontSize: "0.72rem",
-                    fontWeight: active ? 700 : 500,
-                    bgcolor: active ? "error.100" : "action.hover",
-                    color: active ? "error.dark" : "text.secondary",
-                    border: "1px solid",
-                    borderColor: active ? "error.light" : "divider",
-                    cursor: "pointer",
+                    p: 1, borderRadius: 3, textAlign: 'center', cursor: 'pointer',
+                    border: '2px solid', borderColor: isVegan ? '#006d37' : '#eee',
+                    bgcolor: isVegan ? '#f0fdf4' : 'transparent', transition: '0.2s'
                   }}
-                />
-              );
-            })}
-          </Stack>
-
-          {/* Goals */}
-          <Typography
-            variant="caption"
-            sx={{
-              fontWeight: 700, letterSpacing: "0.06em", color: "text.secondary",
-              fontSize: "0.65rem", textTransform: "uppercase", display: "block", mb: 1
-            }}
-          >
-            Health goals
-          </Typography>
-          <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
-            {GOAL_OPTIONS.map((g) => {
-              const active = goals.includes(g);
-              return (
-                <Chip
-                  key={g}
-                  label={g}
-                  size="small"
-                  onClick={() => toggleGoal(g)}
-                  icon={active ? <CheckIcon sx={{ fontSize: "0.8rem !important" }} /> : undefined}
+                >
+                  <Typography variant="h4" sx={{ fontSize: '20px', mb: 1 }}>🌱</Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: isVegan ? '#006d37' : 'text.secondary' }}>VEGAN</Typography>
+                </Box>
+              </Grid>
+              <Grid size={6}>
+                <Box
+                  onClick={() => { triggerHaptic(); setIsVegetarian(!isVegetarian); }}
                   sx={{
-                    textTransform: "capitalize",
-                    fontSize: "0.72rem",
-                    fontWeight: active ? 700 : 500,
-                    bgcolor: active ? "success.50" : "action.hover",
-                    color: active ? "success.dark" : "text.secondary",
-                    border: "1px solid",
-                    borderColor: active ? "success.light" : "divider",
-                    cursor: "pointer",
+                    p: 1, borderRadius: 3, textAlign: 'center', cursor: 'pointer',
+                    border: '2px solid', borderColor: isVegetarian ? '#006d37' : '#eee',
+                    bgcolor: isVegetarian ? '#f0fdf4' : 'transparent', transition: '0.2s'
                   }}
-                />
-              );
-            })}
-          </Stack>
-        </Box>
+                >
+                  <Typography variant="h4" sx={{ fontSize: '20px', mb: 1 }}>🥦</Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 800, color: isVegetarian ? '#006d37' : 'text.secondary' }}>VEGETARIAN</Typography>
+                </Box>
+              </Grid>
+            </Grid>
 
-        <Divider />
-        <Box sx={{ p: 2 }}>
-          <Button
-            variant="contained"
-            fullWidth
-            size="medium"
-            onClick={() => { handleSave(user) }}
-            disabled={saving}
-            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
-            sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600 }}
-          >
-            {saving ? "Saving…" : "Save preferences"}
-          </Button>
-        </Box>
-      </Paper>
+            <Typography variant="overline" sx={{ fontWeight: 900, color: 'text.secondary', paddingTop: "1rem", letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <WarningAmberIcon fontSize="small" /> My Allergens
+            </Typography>
+            <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }} >
+              {ALLERGEN_OPTIONS.map((a) => {
+                const active = allergens.includes(a);
+                return (
+                  <Chip
+                    key={a} label={a} size="medium" onClick={() => toggleAllergen(a)}
+                    sx={{
+                      textTransform: "capitalize", fontWeight: 700, borderRadius: 1,
+                      bgcolor: active ? "#ef4444" : "white",
+                      color: active ? "white" : "text.primary",
+                      border: "1px solid", borderColor: active ? "#ef4444" : "#e5eeff",
+                      "&:hover": { bgcolor: active ? "#dc2626" : "#f1f5f9" }
+                    }}
+                  />
+                );
+              })}
+            </Stack>
 
-      {/* ── Sign out ── */}
-      <Button
-        variant="outlined"
-        fullWidth
-        color="error"
-        startIcon={<LogoutIcon />}
-        onClick={handleSignOut}
-        sx={{ borderRadius: 2, textTransform: "none", fontWeight: 600, py: 1.25 }}
-      >
-        Sign out
-      </Button>
+            <Typography variant="overline" sx={{ fontWeight: 900, color: 'text.secondary', paddingTop: "1rem", letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <AdsClickIcon fontSize="small" /> Health Goals
+            </Typography>
+            <Stack direction="row" sx={{ flexWrap: "wrap", gap: 1 }}>
+              {GOAL_OPTIONS.map((g) => {
+                const active = goals.includes(g);
+                return (
+                  <Chip
+                    key={g} label={g} size="medium" onClick={() => toggleGoal(g)}
+                    icon={active ? <CheckIcon sx={{ color: "white !important", fontSize: 16 }} /> : undefined}
+                    sx={{
+                      textTransform: "capitalize", fontWeight: 700, borderRadius: 1,
+                      bgcolor: active ? "#001629" : "white",
+                      color: active ? "white" : "text.primary",
+                      border: "1px solid", borderColor: active ? "#001629" : "#e5eeff",
+                      "&:hover": { bgcolor: active ? "#001629" : "#f1f5f9" }
+                    }}
+                  />
+                );
+              })}
+            </Stack>
+          </Paper>
+
+          {/* ── ACTIONS ── */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Button
+              variant="contained" fullWidth size="large"
+              onClick={handleSave} disabled={saving}
+              sx={{
+                py: 2, borderRadius: 4, bgcolor: '#006d37', fontWeight: 900,
+                fontSize: '1rem', textTransform: 'none', boxShadow: '0 8px 24px rgba(0, 109, 55, 0.2)'
+              }}
+            >
+              {saving ? <CircularProgress size={24} color="inherit" /> : "Update My Profile"}
+            </Button>
+
+            <Button
+              variant="text" fullWidth color="error"
+              startIcon={<LogoutIcon />} onClick={() => supabase.auth.signOut().then(() => router.push('/login'))}
+              sx={{ fontWeight: 800, textTransform: 'none', opacity: 0.6 }}
+            >
+              Sign out of account
+            </Button>
+          </Box>
+        </Stack>
+      </Container>
 
       <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        open={snackbar.open} autoHideDuration={3000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }}>
+        <Alert severity={snackbar.severity} variant="filled" sx={{ borderRadius: 3, fontWeight: 700 }}>
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 }

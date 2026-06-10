@@ -12,7 +12,7 @@ export function SignupForm() {
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  
+
   const supabase = getSupabaseBrowserClient();
   const router = useRouter();
 
@@ -43,11 +43,15 @@ export function SignupForm() {
   };
 
   return (
-    <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
-      <Stack spacing={3} component="form" onSubmit={handleSignup}>
-        <Box textAlign="center">
-          <Typography variant="h5" fontWeight={700}>Create Account</Typography>
-          <Typography variant="body2" color="text.secondary">Join FoodWise to start scanning smarter</Typography>
+    <Paper elevation={0} sx={{ p: 1 }}>
+      <Stack spacing={2} component="form" onSubmit={handleSignup}>
+        <Box sx={{ textAlign: 'center' }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+          >
+            Join FoodWise to start scanning smarter
+          </Typography>
         </Box>
 
         {error && <Alert severity="error">{error}</Alert>}
@@ -59,6 +63,13 @@ export function SignupForm() {
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           required
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3,
+              height: 56,
+              bgcolor: 'white',
+            }
+          }}
         />
 
         <TextField
@@ -68,6 +79,13 @@ export function SignupForm() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3,
+              height: 56,
+              bgcolor: 'white',
+            }
+          }}
         />
 
         <TextField
@@ -78,6 +96,13 @@ export function SignupForm() {
           onChange={(e) => setPassword(e.target.value)}
           required
           helperText="At least 6 characters"
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 3,
+              height: 56,
+              bgcolor: 'white',
+            }
+          }}
         />
 
         <Button
@@ -86,14 +111,33 @@ export function SignupForm() {
           size="large"
           fullWidth
           disabled={loading}
-          sx={{ py: 1.5, fontWeight: 700 }}
+          sx={{
+            py: 1.8,
+            fontWeight: 800,
+            borderRadius: 3,
+            bgcolor: '#00A651', // Matching the "Proceed" green
+            textTransform: 'none',
+            fontSize: '1.1rem',
+            boxShadow: 'none',
+            "&:hover": { bgcolor: '#008a41' }
+          }}
         >
           {loading ? 'Creating Account...' : 'Sign Up'}
         </Button>
 
-        <Typography variant="body2" textAlign="center">
+        <Typography
+          variant="body2"
+          sx={{ textAlign: 'center' }}
+        >
           Already have an account?{' '}
-          <Link component={NextLink} href="/login" fontWeight={600} sx={{ cursor: 'pointer' }}>
+          <Link
+            component={NextLink}
+            href="/login"
+            sx={{
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
             Log In
           </Link>
         </Typography>

@@ -1,26 +1,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Box, BottomNavigation, BottomNavigationAction, Paper, CircularProgress } from "@mui/material";
-import { useRouter, usePathname } from "next/navigation";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
-import ListAltIcon from "@mui/icons-material/ListAlt";
-import PersonIcon from "@mui/icons-material/Person";
+import { Box } from "@mui/material";
+import { useRouter } from "next/navigation";
 
 // Import your browser client
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
-
-const NAV_ITEMS = [
-  { label: "Home", value: "/dashboard", icon: <DashboardIcon /> },
-  { label: "Scan", value: "/scan", icon: <QrCodeScannerIcon /> },
-  { label: "Lists", value: "/lists", icon: <ListAltIcon /> },
-  { label: "Profile", value: "/profile", icon: <PersonIcon /> },
-];
+import { SplashLoader } from "@/shared/components/SplashLoader";
+import TopNavbar from "@/shared/components/TopNavbar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const pathname = usePathname();
   const supabase = getSupabaseBrowserClient();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -52,16 +42,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [router, supabase]);
 
-  // Determine active tab
-  const activeValue =
-    NAV_ITEMS.find((item) => pathname.startsWith(item.value))?.value ?? "/dashboard";
-
   // ── Loading State (Prevents "Flicker") ─────────
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
-        <CircularProgress color="primary" />
-      </Box>
+      <SplashLoader />
     );
   }
 
@@ -76,44 +60,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         flexDirection: "column",
       }}
     >
-      {children}
+      {/* ── LOGO NAVBAR ── */}
+      <TopNavbar />
 
-      <Paper
-        sx={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1200,
-          borderTop: "1px solid",
-          borderColor: "divider",
-          // Extra padding for mobile "Home Bar"
-          pb: "env(safe-area-inset-bottom, 0px)",
-        }}
-        elevation={0}
-      >
-        <BottomNavigation
-          showLabels
-          value={activeValue}
-          onChange={(_, newValue: string) => router.push(newValue)}
-          sx={{ height: 56 }}
-        >
-          {NAV_ITEMS.map(({ label, value, icon }) => (
-            <BottomNavigationAction
-              key={value}
-              label={label}
-              value={value}
-              icon={icon}
-              sx={{
-                "& .MuiBottomNavigationAction-label": {
-                  fontSize: "0.65rem",
-                  fontWeight: 600,
-                },
-              }}
-            />
-          ))}
-        </BottomNavigation>
-      </Paper>
+      {children}
     </Box>
   );
 }

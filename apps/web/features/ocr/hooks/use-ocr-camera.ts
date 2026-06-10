@@ -86,7 +86,7 @@ export function useOcrCamera(): UseOcrCameraReturn {
           video.onloadedmetadata = () => resolve();
         });
 
-        await video.play();
+        await video?.play();
 
         // Extra safety for Android/WebView cameras
         await new Promise((resolve) => setTimeout(resolve, 150));

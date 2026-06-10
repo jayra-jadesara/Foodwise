@@ -5,21 +5,23 @@
 import { z } from "zod";
 
 // ── Barcode input ──────────────────────────────
+// Accepts: EAN-8/13, UPC-A/E (digits), QR codes (printable ASCII), URLs
 export const BarcodeInputSchema = z.object({
   barcode: z
     .string()
-    .min(8, "Barcode must be at least 8 digits")
-    .max(14, "Barcode must be at most 14 digits")
-    .regex(/^\d+$/, "Barcode must contain only digits"),
+    .min(4, "Barcode too short")
+    .max(200, "Barcode too long")
+    // Allow printable ASCII — covers QR codes, URLs, alphanumeric codes
+    .regex(/^[\x20-\x7E]+$/, "Invalid barcode format"),
 });
 
 export type BarcodeInput = z.infer<typeof BarcodeInputSchema>;
 
-// ── Manual entry form ──────────────────────────
+// ── Manual entry form (numeric only — user types it) ──
 export const ManualEntrySchema = z.object({
   barcode: z
     .string()
-    .min(8, "Enter a valid barcode (8–14 digits)")
+    .min(6, "Enter at least 6 digits")
     .max(14, "Barcode too long")
     .regex(/^\d+$/, "Digits only"),
 });

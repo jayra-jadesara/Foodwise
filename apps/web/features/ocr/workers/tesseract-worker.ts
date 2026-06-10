@@ -1,117 +1,97 @@
 // ─────────────────────────────────────────────
-// FoodWise · OCR · Tesseract Web Worker Manager
-// Runs Tesseract.js in a Web Worker so it never
-// blocks the main thread / UI.
-// Singleton: one worker instance for the session.
+// FoodWise · OCR · Tesseract Worker
+// Compatible with tesseract.js v5 AND v7
+// Singleton — one worker for the whole session
+// Runs off the main thread (non-blocking)
 // ─────────────────────────────────────────────
 
 "use client";
 
-import type { Worker as TesseractWorker } from "tesseract.js";
-
-interface OcrWorkerResult {
+interface OcrResult {
   text: string;
-  confidence: number; // 0–100 from Tesseract
+  confidence: number; // 0–100
 }
 
-type OcrJob = {
-  imageDataUrl: string;
-  resolve: (result: OcrWorkerResult) => void;
-  reject: (err: Error) => void;
+type Job = {
+  dataUrl: string;
+  resolve: (r: OcrResult) => void;
+  reject: (e: Error) => void;
 };
 
-// ── Singleton state ─────────────────────────────
-let workerInstance: TesseractWorker | null = null;
-let workerReady = false;
+let workerInstance: import("tesseract.js").Worker | null = null;
 let initPromise: Promise<void> | null = null;
-const jobQueue: OcrJob[] = [];
-let processing = false;
+const queue: Job[] = [];
+let running = false;
 
-async function getWorker(): Promise<TesseractWorker> {
-  if (workerInstance && workerReady) return workerInstance;
+async function init(): Promise<void> {
+  const Tesseract = await import("tesseract.js");
 
-  if (!initPromise) {
-    initPromise = (async () => {
-      const { createWorker } = await import("tesseract.js");
-      const w = await createWorker("eng", 1, {
-        // Load from CDN — no bundling needed
-        workerPath: "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js",
-        langPath: "https://tessdata.projectnaptha.com/4.0.0",
-        corePath: "https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js",
-        logger: () => { }, // suppress progress logs in production
-      });
+  // v5: createWorker(lang, oem, options)
+  // v7: createWorker(lang, oem, options) — same signature, different internals
+  const worker = await Tesseract.createWorker("eng", 1, {
+    // Load language data from CDN — avoids bundling 10MB lang file
+    langPath: "https://tessdata.projectnaptha.com/4.0.0",
+    logger: () => {}, // suppress verbose progress logs
+    errorHandler: (e: unknown) => console.warn("[tesseract]", e),
+  });
 
-      // Optimized parameters for food labels:
-      // - PSM 6: Assume a single uniform block of text
-      // - Whitelist chars to reduce noise from symbols/barcodes
-      await w.setParameters({
-        tessedit_pageseg_mode: "6" as unknown as Parameters<typeof w.setParameters>[0]["tessedit_pageseg_mode"],
-        // Broad whitelist — includes E-numbers, percentages, brackets
-        tessedit_char_whitelist:
-          "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789" +
-          "()[].,;:%&/-' ",
-        preserve_interword_spaces: "1",
-      });
+  // PSM 6 = single uniform text block — best for ingredient labels
+  await worker.setParameters({
+    tessedit_pageseg_mode: "6" as Parameters<typeof worker.setParameters>[0]["tessedit_pageseg_mode"],
+    // Broad character set — food labels use all of these
+    tessedit_char_whitelist:
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" +
+      "0123456789()[].,;:%&/-' ",
+    preserve_interword_spaces: "1",
+  });
 
-      workerInstance = w;
-      workerReady = true;
-    })();
-  }
-
-  await initPromise;
-  return workerInstance!;
+  workerInstance = worker;
 }
 
-async function processQueue() {
-  if (processing || jobQueue.length === 0) return;
-  processing = true;
+async function processQueue(): Promise<void> {
+  if (running || queue.length === 0) return;
+  running = true;
 
-  while (jobQueue.length > 0) {
-    const job = jobQueue.shift()!;
+  while (queue.length > 0) {
+    const job = queue.shift()!;
     try {
-      const worker = await getWorker();
-      const { data } = await worker.recognize(job.imageDataUrl);
-      job.resolve({
-        text: data.text,
-        confidence: data.confidence, // 0–100
-      });
+      if (!workerInstance) await initPromise;
+      const { data } = await workerInstance!.recognize(job.dataUrl);
+      job.resolve({ text: data.text, confidence: data.confidence });
     } catch (err) {
       job.reject(err instanceof Error ? err : new Error(String(err)));
     }
   }
 
-  processing = false;
+  running = false;
 }
 
-/**
- * Run OCR on an image.
- * @param imageDataUrl  Full data URL (data:image/jpeg;base64,...)
- *                      OR raw base64 — we handle both.
- */
-export function runOcr(imageDataUrl: string): Promise<OcrWorkerResult> {
+export function runOcr(imageDataUrl: string): Promise<OcrResult> {
   // Ensure data URL format
   const dataUrl = imageDataUrl.startsWith("data:")
     ? imageDataUrl
     : `data:image/jpeg;base64,${imageDataUrl}`;
 
   return new Promise((resolve, reject) => {
-    jobQueue.push({ imageDataUrl: dataUrl, resolve, reject });
+    queue.push({ dataUrl, resolve, reject });
     processQueue();
   });
 }
 
-/** Pre-warm the Tesseract worker (call on app mount for faster first scan) */
 export function prewarmOcrWorker(): void {
   if (typeof window === "undefined") return;
-  getWorker().catch(() => { }); // fire and forget
+  if (!initPromise) {
+    initPromise = init().catch((e) => {
+      console.warn("[tesseract] prewarm failed:", e);
+      initPromise = null;
+    });
+  }
 }
 
-/** Terminate worker (call on app unmount to free memory) */
 export async function terminateOcrWorker(): Promise<void> {
   if (workerInstance) {
     await workerInstance.terminate();
     workerInstance = null;
-    workerReady = false;
     initPromise = null;
   }
 }

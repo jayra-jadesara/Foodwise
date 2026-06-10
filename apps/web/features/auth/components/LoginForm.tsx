@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper, Alert, Stack } from '@mui/material';
+import { Box, Button, TextField, Typography, Paper, Alert, Stack, InputAdornment } from '@mui/material';
 import { getSupabaseBrowserClient } from '@/shared/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from '@mui/material/Link';
@@ -20,10 +20,7 @@ export function LoginForm() {
         setLoading(true);
         setError(null);
 
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
             setError(error.message);
@@ -35,51 +32,92 @@ export function LoginForm() {
     };
 
     return (
-        <Paper elevation={0} sx={{ p: 4, borderRadius: 4, border: '1px solid', borderColor: 'divider' }}>
-            <Stack spacing={3} component="form" onSubmit={handleLogin}>
-                <Box text-align="center">
-                    <Typography variant="h5" fontWeight={700}>Welcome Back</Typography>
-                    <Typography variant="body2" color="text.secondary">Login to your FoodWise account</Typography>
-                </Box>
+        <Stack spacing={2} component="form" onSubmit={handleLogin} sx={{ width: '100%' }}>
+            {error && <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert>}
 
-                {error && <Alert severity="error">{error}</Alert>}
+            {/* Email Input Styled like the Screenshot */}
+            <TextField
+                placeholder="Enter your email address"
+                type="email"
+                fullWidth
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                slotProps={{
+                    input: {
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <Typography sx={{ fontWeight: 700, color: '#001629', pr: 1, borderRight: '1px solid #ddd', mr: 1 }}>
+                                    @
+                                </Typography>
+                            </InputAdornment>
+                        ),
+                    },
+                }}
+                sx={{
+                    "& .MuiOutlinedInput-root": {
+                        borderRadius: 3,
+                        height: 56,
+                        bgcolor: 'white',
+                    }
+                }}
+            />
 
-                <TextField
-                    label="Email Address"
-                    type="email"
-                    fullWidth
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                />
+            <TextField
+                placeholder="Enter password"
+                type="password"
+                fullWidth
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                sx={{
+                    "& .MuiOutlinedInput-root": {
+                        borderRadius: 3,
+                        height: 56,
+                        bgcolor: 'white',
+                    }
+                }}
+            />
 
-                <TextField
-                    label="Password"
-                    type="password"
-                    fullWidth
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
+            {/* Primary Green Action Button */}
+            <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                fullWidth
+                disabled={loading}
+                sx={{
+                    py: 1.8,
+                    fontWeight: 800,
+                    borderRadius: 3,
+                    bgcolor: '#00A651', // Matching the "Proceed" green
+                    textTransform: 'none',
+                    fontSize: '1.1rem',
+                    boxShadow: 'none',
+                    "&:hover": { bgcolor: '#008a41' }
+                }}
+            >
+                {loading ? 'Processing...' : 'Proceed'}
+            </Button>
 
-                <Button
-                    type="submit"
-                    variant="contained"
-                    size="large"
-                    fullWidth
-                    disabled={loading}
-                    sx={{ py: 1.5, fontWeight: 700 }}
-                >
-                    {loading ? 'Logging in...' : 'Sign In'}
-                </Button>
+            {/* Footer Terms */}
+            <Box sx={{ textAlign: 'center', px: 2 }}>
+                <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                    By proceeding, I accept <Link href="#" sx={{ color: '#007bff', textDecoration: 'none' }}>Terms & Condition</Link> and <Link component={NextLink} href="/privacy" sx={{ color: '#007bff', textDecoration: 'none' }}>Privacy Policy</Link>
+                </Typography>
 
-                <Typography variant="body2" textAlign="center">
-                    Don't have an account?{' '}
-                    <Link component={NextLink} href="/signup" fontWeight={600} sx={{ cursor: 'pointer' }}>
-                        Sign Up
+                <Typography variant="body2" sx={{ mt: 3 }}>
+                    New here?{" "}
+                    <Link
+                        component={NextLink}
+                        href="/signup"
+                        color="primary"
+                        sx={{ fontWeight: 700 }}
+                    >
+                        Create Account
                     </Link>
                 </Typography>
-            </Stack>
-        </Paper>
+            </Box>
+        </Stack>
     );
 }

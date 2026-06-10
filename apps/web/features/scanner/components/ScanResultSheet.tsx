@@ -1,10 +1,6 @@
-// ─────────────────────────────────────────────
-// FoodWise · Scanner · ScanResultSheet
-// Bottom sheet that slides up with scan results
-// ─────────────────────────────────────────────
-
 "use client";
 
+import React from "react";
 import {
   Drawer,
   Box,
@@ -18,16 +14,17 @@ import {
   AccordionDetails,
   Button,
   Skeleton,
-  Alert,
   Paper,
+  Grid,
+  Divider,
 } from "@mui/material";
+
+// Icons
 import CloseIcon from "@mui/icons-material/Close";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
-import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { HealthScoreDial } from "./HealthScoreDial";
-import { NutritionPanel } from "./NutritionPanel";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+
 import type { ScanResult } from "../types";
 
 interface Props {
@@ -42,266 +39,261 @@ interface Props {
 export function ScanResultSheet({
   open,
   onClose,
-  result,
+  result = null,
   loading = false,
   onAddToList,
   onCompare,
 }: Props) {
+  // Logic: Identify high risks for the alert box
   const highRisks = result?.health_score.ingredient_risks.filter(
     (r) => r.risk === "high"
   ) ?? [];
+
+  // Helper: Health Score Dial Logic
+  const getDialColor = (score: number) => {
+    if (score >= 70) return "#6bfe9c"; // Vibrant Green
+    if (score >= 40) return "#fde047"; // Yellow
+    return "#ef4444"; // Red
+  };
 
   return (
     <Drawer
       anchor="bottom"
       open={open}
       onClose={onClose}
-      PaperProps={{
-        sx: {
-          borderRadius: "20px 20px 0 0",
-          maxHeight: "90dvh",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
+      slotProps={{
+        backdrop: {
+          sx: {
+            backgroundColor: 'rgba(20, 20, 20, 0.4)',
+          },
+        },
+        paper: {
+          sx: {
+            borderRadius: '24px 24px 0 0',
+            maxHeight: '90dvh',
+            bgcolor: '#ffffff',
+            overflow: 'hidden',
+          },
         },
       }}
     >
-      {/* ── Drag handle ── */}
-      <Box sx={{ display: "flex", justifyContent: "center", pt: 1.5, pb: 0.5 }}>
-        <Box sx={{ width: 40, height: 4, borderRadius: 2, bgcolor: "divider" }} />
+      {/* ── DRAG HANDLE ── */}
+      <Box sx={{ display: "flex", justifyContent: "center", pt: 2, pb: 1 }}>
+        <Box sx={{ width: 40, height: 4, borderRadius: "2px", bgcolor: "#c3c7ce" }} />
       </Box>
 
-      {/* ── Header ── */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 1.5,
-          px: 2.5,
-          pt: 1,
-          pb: 1.5,
-        }}
-      >
+      {/* ── CONTENT AREA ── */}
+      <Box sx={{ flex: 1, overflowY: "auto", px: 2, pb: 6 }}>
         {loading ? (
-          <>
-            <Skeleton variant="rounded" width={56} height={56} sx={{ flexShrink: 0 }} />
-            <Box sx={{ flex: 1 }}>
-              <Skeleton width="70%" height={22} />
-              <Skeleton width="40%" height={18} sx={{ mt: 0.5 }} />
-            </Box>
-          </>
+          <Box sx={{ p: 2 }}>
+            <Skeleton variant="text" width="60%" height={40} sx={{ mb: 2 }} />
+            <Skeleton variant="rounded" height={100} sx={{ mb: 2 }} />
+            <Skeleton variant="circular" width={120} height={120} sx={{ mx: "auto" }} />
+          </Box>
         ) : result ? (
-          <>
-            <Avatar
-              src={result.product.image_url}
-              variant="rounded"
-              alt={result.product.name}
-              sx={{ width: 56, height: 56, flexShrink: 0, bgcolor: "action.selected" }}
-            >
-              🛒
-            </Avatar>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                variant="subtitle1"
-                fontWeight={700}
-                sx={{
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  lineHeight: 1.3,
-                }}
+          <Stack spacing={3}>
+            {/* ── HEADER ── */}
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Typography variant="h5" sx={{ fontFamily: "Plus Jakarta Sans", fontWeight: 700 }}>
+                Scan Result
+              </Typography>
+              <IconButton onClick={onClose} sx={{ bgcolor: "#eff4ff" }}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+
+            {/* ── PRODUCT INFO ── */}
+            <Box sx={{ display: "flex", gap: 2 }}>
+              <Avatar
+                src={result?.product?.image_url}
+                variant="rounded"
+                sx={{ width: 96, height: 96, borderRadius: 2, bgcolor: "#eff4ff" }}
               >
-                {result.product.name}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.78rem" }}>
-                {result.product.brand}
-              </Typography>
-              <Box sx={{ mt: 0.5 }}>
-                {result.product.categories?.slice(0, 2).map((c) => (
-                  <Chip
-                    key={c}
-                    label={c}
-                    size="small"
-                    variant="outlined"
-                    sx={{ mr: 0.5, fontSize: "0.62rem", height: 20, textTransform: "capitalize" }}
-                  />
-                ))}
+                🛒
+              </Avatar>
+              <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                <Typography variant="h6" sx={{ lineHeight: 1.2, fontWeight: 800 }}>
+                  {result?.product?.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {result?.product?.brand}
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  {result?.product?.categories?.slice(0, 2).map((cat) => (
+                    <Chip key={cat} label={cat} size="small" sx={{ bgcolor: "#d3e4fe", fontWeight: 600, fontSize: "0.65rem" }} />
+                  ))}
+                </Stack>
               </Box>
             </Box>
-          </>
-        ) : null}
 
-        <IconButton size="small" onClick={onClose} sx={{ ml: "auto", mt: -0.5 }}>
-          <CloseIcon fontSize="small" />
-        </IconButton>
-      </Box>
-
-      {/* ── Scrollable content ── */}
-      <Box sx={{ flex: 1, overflowY: "auto", px: 2.5, pb: 4 }}>
-        {loading && (
-          <Box>
-            <Skeleton variant="circular" width={160} height={160} sx={{ mx: "auto", mb: 2 }} />
-            <Skeleton height={120} sx={{ borderRadius: 2 }} />
-          </Box>
-        )}
-
-        {!loading && result && (
-          <Stack spacing={2.5}>
-            {/* ── High risk alert ── */}
+            {/* ── HIGH RISK ALERT BOX ── */}
             {highRisks.length > 0 && (
-              <Alert
-                severity="warning"
-                icon={<WarningAmberIcon fontSize="small" />}
-                sx={{ borderRadius: 2, py: 0.5, "& .MuiAlert-message": { fontSize: "0.78rem" } }}
-              >
-                Contains {highRisks.length} flagged ingredient{highRisks.length > 1 ? "s" : ""}:{" "}
-                <strong>{highRisks.map((r) => r.name).join(", ")}</strong>
-              </Alert>
+              <Box sx={{
+                p: 2, borderRadius: 2, border: "1px solid #ffdad6", bgcolor: "rgba(255, 218, 214, 0.3)",
+                display: "flex", alignItems: "center", gap: 2
+              }}>
+                <WarningAmberIcon sx={{ color: "#ba1a1a" }} />
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }} color="#ba1a1a">High Risk Alert</Typography>
+                  <Typography variant="caption" color="#ba1a1a">
+                    Contains {highRisks.length} flagged ingredient{highRisks.length > 1 ? 's' : ''}: {highRisks[0].name}
+                  </Typography>
+                </Box>
+              </Box>
             )}
 
-            {/* ── Health Score Dial ── */}
-            <Box sx={{ display: "flex", justifyContent: "center" }}>
-              <Box sx={{ width: 200 }}>
-                <HealthScoreDial score={result.health_score} size={200} />
+            {/* ── HEALTH SCORE DIAL ── */}
+            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <Box sx={{ position: "relative", width: 128, height: 128, mb: 2 }}>
+                <svg width="128" height="128" viewBox="0 0 100 100" style={{ transform: "rotate(-90deg)" }}>
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="#e5eeff" strokeWidth="8" />
+                  <circle
+                    cx="50" cy="50" r="45" fill="none"
+                    stroke={getDialColor(result?.health_score.total)}
+                    strokeWidth="8"
+                    strokeDasharray="282.7"
+                    strokeDashoffset={282.7 - (282.7 * result?.health_score.total) / 100}
+                    strokeLinecap="round"
+                    style={{ transition: "stroke-dashoffset 1s ease-in-out" }}
+                  />
+                </svg>
+                <Box sx={{
+                  position: "absolute", inset: 0, display: "flex",
+                  flexDirection: "column", alignItems: "center", justifyContent: "center"
+                }}>
+                  <Typography
+                    variant="h4"
+                    sx={{ fontWeight: 900 }}
+                  >
+                    {result?.health_score.total}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">/100</Typography>
+                </Box>
               </Box>
+
+              <Chip
+                icon={<CheckCircleIcon sx={{ fontSize: "18px !important", color: "inherit" }} />}
+                label={result?.health_score.verdict || "Healthy Choice"}
+                sx={{
+                  bgcolor: "rgba(107, 254, 156, 0.2)", color: "#006d37",
+                  fontWeight: 700, px: 1, height: 36, borderRadius: 10
+                }}
+              />
             </Box>
 
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                textAlign: 'center',
-                borderRadius: 3,
-                bgcolor: result.health_score.total < 50 ? 'error.50' : 'success.50',
-                border: '1px solid',
-                borderColor: result.health_score.total < 50 ? 'error.light' : 'success.light'
-              }}
-            >
-              <Typography variant="body2" fontWeight={700} color={result.health_score.total < 50 ? 'error.main' : 'success.main'}>
-                {result.health_score.verdict || "Analysis Complete"}
-              </Typography>
-            </Paper>
-
-            {/* ── Action buttons ── */}
-            <Stack direction="row" spacing={1.5}>
+            {/* ── ACTION BUTTONS ── */}
+            <Stack direction="row" spacing={2}>
               <Button
-                variant="contained"
-                fullWidth
-                startIcon={<AddShoppingCartIcon />}
+                fullWidth variant="contained" size="large"
                 onClick={() => onAddToList?.(result)}
-                sx={{ borderRadius: 3, textTransform: "none", fontWeight: 600 }}
+                sx={{ bgcolor: "#001629", borderRadius: 2, fontWeight: 700, textTransform: "none", height: 48 }}
               >
-                Add to list
+                Add to List
               </Button>
               <Button
-                variant="outlined"
-                fullWidth
-                startIcon={<CompareArrowsIcon />}
+                fullWidth variant="outlined" size="large"
                 onClick={() => onCompare?.(result)}
-                sx={{ borderRadius: 3, textTransform: "none" }}
+                sx={{ borderColor: "#001629", color: "#001629", borderRadius: 2, fontWeight: 700, textTransform: "none", height: 48, borderWidth: 2 }}
               >
                 Compare
               </Button>
             </Stack>
 
-            {/* ── Nutrition accordion ── */}
-            <Accordion
-              defaultExpanded
-              disableGutters
-              elevation={0}
-              sx={{
-                border: "1px solid",
-                borderColor: "divider",
-                borderRadius: "12px !important",
-                "&:before": { display: "none" },
-                overflow: "hidden",
-              }}
-            >
-              <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
-                <Typography fontWeight={600} fontSize="0.88rem">
+            {/* ── NUTRITION ACCORDION ── */}
+            <Accordion elevation={0} sx={{ border: "1px solid #c3c7ce", borderRadius: "12px !important", overflow: "hidden" }}>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                  }}
+                >
                   Nutrition & Ingredients
                 </Typography>
               </AccordionSummary>
-              <AccordionDetails sx={{ px: 2, pt: 0, pb: 2 }}>
-                <NutritionPanel product={result.product} />
+              <AccordionDetails sx={{ pt: 0 }}>
+                {/* MACROS GRID */}
+                <Grid container spacing={1} sx={{ mb: 2 }}>
+                  {[
+                    { label: "Cals", val: result?.product?.nutriments?.energy_kcal_100g || 0 },
+                    { label: "Protein", val: `${result?.product?.nutriments?.proteins_100g || 0}g` },
+                    { label: "Fat", val: `${result?.product?.nutriments?.fat_100g || 0}g` },
+                    { label: "Carbs", val: `${result?.product?.nutriments?.carbohydrates_100g || 0}g` },
+                  ].map((item) => (
+                    <Grid size={3} key={item.label}>
+                      <Box sx={{ bgcolor: "#e5eeff", p: 1, borderRadius: 2, textAlign: "center" }}>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ display: 'block' }}
+                        >
+                          {item.label}
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 700 }}
+                        >
+                          {item.val}
+                        </Typography>
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>
+                  {result?.product?.ingredients_text}
+                </Typography>
               </AccordionDetails>
             </Accordion>
 
-            {/* ── Ingredient risks accordion ── */}
-            {result.health_score.ingredient_risks.length > 0 && (
-              <Accordion
-                disableGutters
-                elevation={0}
+            {/* ── INGREDIENT INSIGHTS ── */}
+            <Box>
+              <Typography
+                variant="subtitle2"
                 sx={{
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: "12px !important",
-                  "&:before": { display: "none" },
-                  overflow: "hidden",
+                  fontWeight: 700,
+                  mb: 2,
                 }}
               >
-                <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
-                  <Typography fontWeight={600} fontSize="0.88rem">
-                    Ingredient Risks ({result.health_score.ingredient_risks.length})
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails sx={{ px: 2, pt: 0, pb: 2 }}>
-                  <Stack spacing={1}>
-                    {result.health_score.ingredient_risks.map((risk, i) => (
-                      <Box
-                        key={i}
-                        sx={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          gap: 1.5,
-                          p: 1.5,
-                          borderRadius: 2,
-                          bgcolor: risk.risk === "high" ? "error.50" : "warning.50",
-                          border: "1px solid",
-                          borderColor: risk.risk === "high" ? "error.light" : "warning.light",
-                        }}
+                Ingredient Insights
+              </Typography>
+              <Stack spacing={1.5}>
+                {result?.health_score.ingredient_risks.map((risk, i) => (
+                  <Paper key={i} variant="outlined" sx={{
+                    p: 1.5, borderRadius: 3, display: "flex", gap: 2, alignItems: "flex-start",
+                    bgcolor: risk.risk === 'high' ? "rgba(255, 218, 214, 0.2)" : "#f8f9ff"
+                  }}>
+                    <Chip
+                      label={risk.risk}
+                      size="small"
+                      sx={{
+                        bgcolor: risk.risk === 'high' ? "#ef4444" : "#73777e",
+                        color: "#fff", fontWeight: 800, fontSize: '10px', textTransform: 'uppercase'
+                      }}
+                    />
+                    <Box>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 700 }}
                       >
-                        <Chip
-                          label={risk.risk}
-                          size="small"
-                          sx={{
-                            bgcolor: risk.risk === "high" ? "error.main" : "warning.main",
-                            color: "#fff",
-                            fontWeight: 700,
-                            fontSize: "0.62rem",
-                            height: 20,
-                            textTransform: "uppercase",
-                            flexShrink: 0,
-                          }}
-                        />
-                        <Box>
-                          <Typography variant="body2" fontWeight={600} sx={{ textTransform: "capitalize", fontSize: "0.8rem" }}>
-                            {risk.name}
-                          </Typography>
-                          {risk.reason && (
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.72rem" }}>
-                              {risk.reason}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Box>
-                    ))}
-                  </Stack>
-                </AccordionDetails>
-              </Accordion>
-            )}
+                        {risk.name}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{risk.reason}</Typography>
+                    </Box>
+                  </Paper>
+                ))}
+              </Stack>
+            </Box>
 
-            {/* ── Source ── */}
-            <Typography
-              variant="caption"
-              color="text.disabled"
-              sx={{ textAlign: "center", display: "block", fontSize: "0.65rem" }}
-            >
-              Data source: {result.product.source} · Barcode {result.product.barcode}
-            </Typography>
+            {/* ── FOOTER ── */}
+            <Divider />
+            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+              <Typography variant="caption" color="text.disabled">Data source: {result?.product?.source}</Typography>
+              <Typography variant="caption" color="text.disabled">Barcode: {result?.product?.barcode}</Typography>
+            </Box>
           </Stack>
-        )}
+        ) : null}
       </Box>
-    </Drawer>
+    </Drawer >
   );
 }

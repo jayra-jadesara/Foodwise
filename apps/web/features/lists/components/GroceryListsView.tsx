@@ -12,10 +12,8 @@ import {
   CircularProgress, Snackbar, Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import DeleteOutlineIcon from "@mui/icons-material/Delete";
 import ListAltIcon from "@mui/icons-material/ListAlt";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { useState, useCallback } from "react";
 import { getSupabaseBrowserClient } from "@/shared/lib/supabase/client";
 
@@ -93,9 +91,9 @@ export function GroceryListsView({ userId, initialLists }: Props) {
   return (
     <Container maxWidth="sm" sx={{ py: 3, pb: 4 }}>
       {/* ── Header ── */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 3 }}>
+      <Stack direction="row" sx={{ mb: 3, alignitems: "center", justifycontent: "space-between" }}>
         <Box>
-          <Typography variant="h5" fontWeight={800}>Grocery Lists</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 800 }}>Grocery Lists</Typography>
           <Typography variant="body2" color="text.secondary">
             {lists.length} active list{lists.length !== 1 ? "s" : ""}
           </Typography>
@@ -105,8 +103,10 @@ export function GroceryListsView({ userId, initialLists }: Props) {
 
       {/* ── Create new list ── */}
       <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, mb: 3 }}>
-        <Typography variant="caption" sx={{ fontWeight: 700, color: "text.secondary",
-          fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 1 }}>
+        <Typography variant="caption" sx={{
+          fontWeight: 700, color: "text.secondary",
+          fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em", display: "block", mb: 1
+        }}>
           New list
         </Typography>
         <Stack direction="row" spacing={1}>
@@ -137,7 +137,7 @@ export function GroceryListsView({ userId, initialLists }: Props) {
           variant="outlined"
           sx={{ p: 4, borderRadius: 3, textAlign: "center", borderStyle: "dashed", bgcolor: "transparent" }}
         >
-          <Typography fontSize="2rem" sx={{ mb: 1 }}>🛒</Typography>
+          <Typography sx={{ mb: 1, fontSize: "2rem" }}>🛒</Typography>
           <Typography variant="body2" color="text.secondary">
             No lists yet. Create your first grocery list above.
           </Typography>
@@ -157,16 +157,38 @@ export function GroceryListsView({ userId, initialLists }: Props) {
               >
                 <Box sx={{ p: 2, display: "flex", alignItems: "flex-start", gap: 1.5 }}>
                   <Box sx={{ flex: 1 }}>
-                    <Typography fontWeight={700} fontSize="0.95rem">
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                      }}
+                    >
                       {list.title}
                     </Typography>
-                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mt: 0.5 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: "0.7rem" }}>
-                        {total === 0 ? "Empty list" : `${done} / ${total} items`}
+
+                    <Stack
+                      direction="row"
+                      sx={{ mt: 0.5, spacing: 0.75, alignItems: "center" }}
+                    >
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontSize: '0.7rem' }}
+                      >
+                        {total === 0 ? 'Empty list' : `${done} / ${total} items`}
                       </Typography>
+
                       {total > 0 && done === total && (
-                        <Chip label="Complete" size="small" color="success"
-                          sx={{ height: 16, fontSize: "0.6rem", fontWeight: 700 }} />
+                        <Chip
+                          label="Complete"
+                          size="small"
+                          color="success"
+                          sx={{
+                            height: 16,
+                            fontSize: '0.6rem',
+                            fontWeight: 700,
+                          }}
+                        />
                       )}
                     </Stack>
                     {total > 0 && (
@@ -211,7 +233,14 @@ export function GroceryListsView({ userId, initialLists }: Props) {
       <Dialog
         open={!!deleteId}
         onClose={() => setDeleteId(null)}
-        PaperProps={{ sx: { borderRadius: 3, m: 2 } }}
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 3,
+              m: 2,
+            },
+          },
+        }}
       >
         <DialogTitle sx={{ fontWeight: 700, pb: 1 }}>Delete list?</DialogTitle>
         <DialogContent>
